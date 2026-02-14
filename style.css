@@ -1,0 +1,526 @@
+html {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    height: 100%;
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* Restored overflow hidden to prevent scrollbars */
+    background: linear-gradient(-45deg, #2b0c18, #590d22, #3a0ca3, #1a0b1c);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    color: var(--text-color);
+}
+
+.vignette {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.9);
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* --- STAGE 1: INTRO --- */
+.intro-container {
+    position: absolute;
+    z-index: 100;
+    /* High z-index to be on top */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.click-instruction {
+    position: absolute;
+    bottom: 10%;
+    /* Much lower */
+    font-size: 1.5rem;
+    color: #ffffff;
+    text-shadow: 0 0 10px #ff4d6d;
+    animation: pulseText 2s infinite;
+    z-index: 101;
+    pointer-events: none;
+    /* Let clicks pass to canvas */
+    transition: opacity 1s ease;
+}
+
+/* VISIBILITY CLASSES (Restored) */
+.hidden {
+    opacity: 0;
+    visibility: hidden;
+    display: none;
+    pointer-events: none;
+    transition: opacity 2s ease;
+}
+
+.visible {
+    opacity: 1;
+    visibility: visible;
+    display: flex;
+    pointer-events: auto;
+}
+
+/* --- STAGE 2: MAIN CONTENT --- */
+#main-content {
+    /* Layout */
+    width: 100%;
+    height: 100%;
+    /* Display is handled by JS toggle */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.card-container {
+    text-align: center;
+    z-index: 50;
+    /* Above vignette */
+    position: relative;
+    padding: 3rem 4rem;
+    background: rgba(48, 20, 35, 0.6);
+    /* Slightly more visible dark glass */
+    backdrop-filter: blur(15px);
+    border-radius: 30px;
+    text-align: center;
+    max-width: 90%;
+    width: 600px;
+    transform-style: preserve-3d;
+    position: relative;
+    /* For shine effects */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 50px rgba(255, 77, 109, 0.2), inset 0 0 20px rgba(255, 77, 109, 0.1);
+    overflow: hidden;
+}
+
+.card-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+    pointer-events: none;
+    transform: rotate(30deg);
+    animation: shineCard 10s linear infinite;
+}
+
+@keyframes shineCard {
+    0% {
+        transform: rotate(30deg) translateY(0);
+    }
+
+    50% {
+        transform: rotate(30deg) translateY(-20px);
+    }
+
+    100% {
+        transform: rotate(30deg) translateY(0);
+    }
+}
+
+.heart-container {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    transform: translateZ(50px);
+    filter: drop-shadow(0 0 20px #ff4d6d);
+}
+
+.heart-svg {
+    fill: #ff4d6d;
+    width: 100%;
+    height: 100%;
+    animation: heartbeat 1.5s infinite;
+}
+
+/* NEON TYPOGRAPHY */
+.names {
+    font-family: 'Great Vibes', cursive;
+    font-size: 5rem;
+    margin-bottom: 0.5rem;
+    /* Rose Gold Gradient */
+    background: linear-gradient(to bottom, #fff0f3 0%, #ffccd5 50%, #ff4d6d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(255, 77, 109, 0.8));
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    transform: translateZ(30px);
+    z-index: 60;
+}
+
+.name-wrapper,
+.amp {
+    display: inline-block;
+}
+
+.amp {
+    font-family: 'Great Vibes', cursive;
+    font-size: 3rem;
+    color: #ff99ac;
+    text-shadow: 0 0 15px #ff4d6d;
+}
+
+/* COUNTER STYLES */
+.counter-container {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateZ(25px);
+}
+
+.counter-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+    color: #ffcccb;
+    margin-bottom: 0.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    width: 100%;
+}
+
+.counter {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.time-unit {
+    background: rgba(255, 77, 109, 0.2);
+    padding: 5px 10px;
+    border-radius: 8px;
+    min-width: 60px;
+}
+
+/* MESSAGE */
+.message {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #ffe5ec;
+    margin-top: 1.5rem;
+    min-height: 30px;
+    transform: translateZ(20px);
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    width: 100%;
+}
+
+/* MUSIC CONTROL */
+.music-control {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    z-index: 200;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.music-control:hover {
+    transform: scale(1.1);
+}
+
+/* ENVELOPE HINT */
+.envelope-hint {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255, 204, 213, 0.7);
+    text-align: center;
+    margin-top: 1.5rem;
+    z-index: 50;
+    letter-spacing: 1px;
+    animation: pulseText 3s infinite;
+}
+
+.vinyl {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(#111 60%, #333 70%, #111 100%);
+    border: 2px solid #555;
+    position: relative;
+    animation: spin 4s linear infinite;
+    animation-play-state: paused;
+}
+
+.music-control.playing .vinyl {
+    animation-play-state: running;
+    box-shadow: 0 0 15px rgba(255, 77, 109, 0.6);
+}
+
+.music-note {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    color: white;
+    pointer-events: none;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .names {
+        font-size: 2.5rem;
+        /* Reduced from 3rem */
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .card-container {
+        padding: 1.5rem;
+        /* Reduced from 2rem for more space */
+        width: 85%;
+        /* Reduced from 90% to pull away from edges */
+        /* PERFORMANCE FIX: Remove blur on mobile */
+        backdrop-filter: none;
+        background: rgba(48, 20, 35, 0.85);
+        /* Slightly more transparent */
+        /* Solid restart */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        /* Soft shadow restored */
+    }
+
+    .counter {
+        font-size: 0.9rem;
+        /* Smaller counter text */
+    }
+
+    .counter-title {
+        font-size: 0.8rem;
+    }
+
+    .message {
+        font-size: 1rem;
+    }
+
+    /* Move music control to top on mobile to avoid bottom UI conflicts */
+    .music-control {
+        bottom: auto;
+        top: 25px;
+        /* More breathing room */
+        right: 25px;
+        width: 45px;
+        height: 45px;
+    }
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Animations */
+@keyframes gradientBG {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes pulseText {
+    0% {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+}
+
+@keyframes heartbeat {
+    0% {
+        transform: scale(1);
+    }
+
+    15% {
+        transform: scale(1.15);
+    }
+
+    30% {
+        transform: scale(1);
+    }
+
+    45% {
+        transform: scale(1.15);
+    }
+
+    60% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Mobile Responsiveness */
+.amp {
+    display: block;
+    margin: 10px 0;
+}
+
+
+/* Remove .container duplicate */
+
+
+.heart-container {
+    width: 80px;
+    height: 80px;
+}
+
+/* --- LOVE NOTE MODAL --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.note-card {
+    background: #fff0f3;
+    padding: 2rem;
+    border-radius: 20px;
+    max-width: 90%;
+    width: 400px;
+    text-align: center;
+    position: relative;
+    transform: scale(0.8);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 50px rgba(255, 77, 109, 0.5);
+    border: 2px solid #ff4d6d;
+}
+
+.modal-overlay.active .note-card {
+    transform: scale(1);
+}
+
+.note-content {
+    font-family: 'Great Vibes', cursive;
+    font-size: 2.5rem;
+    color: #a4133c;
+    margin-bottom: 2rem;
+    line-height: 1.4;
+}
+
+.note-close {
+    background: #ff4d6d;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 50px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+    transition: transform 0.2s;
+}
+
+.note-close:hover {
+    transform: scale(1.05);
+}
+
+/* Mobile Specific Fixes for Modal */
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: center;
+        /* Ensure vertical centering */
+        justify-content: center;
+        height: 100vh;
+        /* Force full viewport height */
+        width: 100vw;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+        /* Ensure on very top */
+    }
+
+    .note-card {
+        width: 85%;
+        padding: 1.5rem;
+        max-width: 350px;
+        /* Limit width */
+    }
+
+    .note-content {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .note-close {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+    }
+}

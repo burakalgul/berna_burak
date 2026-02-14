@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burak & Berna - Sevgililer Günü</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Inline critical CSS to prevent FOUC */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #1a0b1c;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="vignette"></div>
+
+    <!-- STAGE 1: INTRO (Particle Heart) -->
+    <div id="intro" class="intro-container">
+        <!-- Canvas is now the main element here, handled by script.js -->
+        <p class="click-instruction" id="intro-text" style="opacity: 0;">❤️ Kalbe Dokun</p>
+    </div>
+
+    <!-- STAGE 2: MAIN CONTENT (Hidden initially) -->
+    <div id="main-content" class="hidden">
+
+        <!-- Music Control -->
+        <div class="music-control" id="music-control">
+            <div class="vinyl"></div>
+            <span class="music-note">🎵</span>
+        </div>
+
+        <div class="card-container" data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-glare
+            data-tilt-max-glare="0.5">
+            <div class="heart-container">
+                <!-- SVG Heart -->
+                <svg class="heart-svg" viewBox="0 0 32 29.6">
+                    <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
+                    c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z" />
+                </svg>
+            </div>
+
+            <div class="names">
+                <div class="name-wrapper">Burak</div>
+                <span class="amp">&</span>
+                <div class="name-wrapper">Berna</div>
+            </div>
+
+            <div class="counter-container">
+                <p class="counter-title">Birlikte geçirdiğimiz zaman</p>
+                <div id="counter" class="counter">Yükleniyor...</div>
+            </div>
+
+
+
+            <p class="message" id="message"></p>
+        </div>
+
+        <p class="envelope-hint">💌 Zarflara dokun :)</p>
+    </div>
+
+
+
+    <!-- LOVE NOTE MODAL -->
+    <div id="love-modal" class="modal-overlay">
+        <div class="note-card">
+            <p id="note-text" class="note-content">Seni seviyorum çünkü...</p>
+            <button id="close-note" class="note-close">Kapat</button>
+        </div>
+    </div>
+
+    <!-- Audio Player -->
+    <audio id="bg-music" loop>
+        <source src="dilerimki.mp3" type="audio/mpeg">
+        Tarayıcınız ses elementini desteklemiyor.
+    </audio>
+
+    <!-- Background Canvas for Particles -->
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
