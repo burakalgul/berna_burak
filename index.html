@@ -42,11 +42,21 @@
         <div class="card-container" data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-glare
             data-tilt-max-glare="0.5">
             <div class="heart-container">
-                <!-- SVG Heart -->
+                <!-- SVG Heart with Gradient -->
                 <svg class="heart-svg" viewBox="0 0 32 29.6">
-                    <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
+                    <defs>
+                        <radialGradient id="heartGrad" cx="40%" cy="35%" r="60%">
+                            <stop offset="0%" stop-color="#ff8fa3" />
+                            <stop offset="50%" stop-color="#ff4d6d" />
+                            <stop offset="100%" stop-color="#c9184a" />
+                        </radialGradient>
+                    </defs>
+                    <path fill="url(#heartGrad)" d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
                     c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z" />
                 </svg>
+                <!-- Glow rings -->
+                <div class="heart-ring heart-ring-1"></div>
+                <div class="heart-ring heart-ring-2"></div>
             </div>
 
             <div class="names">
