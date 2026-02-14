@@ -34,25 +34,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // RELATIONSHIP COUNTER
     // -----------------------------------------------------------------
     function updateCounter() {
-        const startDate = new Date('October 2, 2025 22:00:00').getTime();
-        const now = new Date().getTime();
-        const diff = now - startDate;
+        const startDate = new Date('October 2, 2025 22:00:00');
+        const now = new Date();
 
-        if (diff < 0) {
+        if (now < startDate) {
             counterEl.innerHTML = "Gelecekte buluşacağız...";
             return;
         }
 
+        // Calculate months
+        let months = (now.getFullYear() - startDate.getFullYear()) * 12;
+        months += now.getMonth() - startDate.getMonth();
+
+        // Adjust if current day hasn't passed start day yet
+        const tempDate = new Date(startDate);
+        tempDate.setMonth(tempDate.getMonth() + months);
+        if (tempDate > now) {
+            months--;
+            tempDate.setMonth(tempDate.getMonth() - 1);
+        }
+
+        // Remaining time after months
+        const diff = now.getTime() - tempDate.getTime();
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
         counterEl.innerHTML = `
-            <div class="time-unit">${days} Gün</div>
-            <div class="time-unit">${hours} Saat</div>
-            <div class="time-unit">${minutes} Dakika</div>
-            <div class="time-unit">${seconds} Saniye</div>
+            <div class="time-unit"><span class="time-number">${months}</span><span class="time-label">Ay</span></div>
+            <div class="time-unit"><span class="time-number">${days}</span><span class="time-label">Gün</span></div>
+            <div class="time-unit"><span class="time-number">${hours}</span><span class="time-label">Saat</span></div>
+            <div class="time-unit"><span class="time-number">${minutes}</span><span class="time-label">Dakika</span></div>
+            <div class="time-unit"><span class="time-number">${seconds}</span><span class="time-label">Saniye</span></div>
         `;
     }
     setInterval(updateCounter, 1000);
@@ -83,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // -----------------------------------------------------------------
     const particleSprites = [];
     function createParticleSprites() {
-        const hues = [345, 350, 355, 360, 10];
+        const hues = [0, 355, 350, 5, 358]; // Deep reds
 
         hues.forEach(hue => {
             const size = 20;
@@ -92,18 +106,30 @@ document.addEventListener('DOMContentLoaded', () => {
             pCanvas.height = size * 2;
             const pCtx = pCanvas.getContext('2d');
 
+            // Draw a mini heart shape
+            const cx = size;
+            const cy = size;
+            const s = size * 0.85; // Scale to fit canvas
+
+            pCtx.beginPath();
+            pCtx.moveTo(cx, cy + s * 0.4); // Bottom tip
+            // Left curve
+            pCtx.bezierCurveTo(cx - s * 1.1, cy - s * 0.1, cx - s * 0.6, cy - s * 0.9, cx, cy - s * 0.4);
+            // Right curve
+            pCtx.bezierCurveTo(cx + s * 0.6, cy - s * 0.9, cx + s * 1.1, cy - s * 0.1, cx, cy + s * 0.4);
+            pCtx.closePath();
+
+            // Gradient fill for depth
             const gradient = pCtx.createRadialGradient(
-                size, size, 0,
-                size, size, size
+                cx - s * 0.2, cy - s * 0.2, 0,
+                cx, cy, s
             );
-            gradient.addColorStop(0, '#ffffff');
-            gradient.addColorStop(0.3, `hsl(${hue}, 90%, 55%)`);
-            gradient.addColorStop(0.9, `hsl(${hue}, 100%, 30%)`);
-            gradient.addColorStop(1, '#220000');
+            gradient.addColorStop(0, '#ffcccc');
+            gradient.addColorStop(0.25, `hsl(${hue}, 100%, 50%)`);
+            gradient.addColorStop(0.7, `hsl(${hue}, 100%, 30%)`);
+            gradient.addColorStop(1, '#330000');
 
             pCtx.fillStyle = gradient;
-            pCtx.beginPath();
-            pCtx.arc(size, size, size, 0, Math.PI * 2);
             pCtx.fill();
 
             particleSprites.push({ hue: hue, canvas: pCanvas });
@@ -120,10 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
             this.baseTargetY = 0;
             this.vx = 0;
             this.vy = 0;
-            this.friction = 0.94;
-            this.spring = 0.003;
+            this.friction = 0.93;
+            this.spring = 0.002;
             // Pre-assign a sprite based on random hue match
             this.spriteIndex = Math.floor(Math.random() * particleSprites.length);
+            this.angle = Math.random() * Math.PI * 2; // For spiral rotation
+            this.arrived = false; // Track if close to target
 
             this.size = 0;
             this.hue = 0;
@@ -136,10 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.y = height / 2 + Math.sin(angle) * dist;
 
                 const rand = Math.random();
-                if (rand < 0.8) {
-                    this.size = isMobile ? Math.random() * 1.5 + 1 : Math.random() * 2 + 2;
+                if (rand < 0.5) {
+                    this.size = isMobile ? Math.random() * 3 + 2 : Math.random() * 4 + 3;
+                } else if (rand < 0.85) {
+                    this.size = isMobile ? Math.random() * 4 + 4 : Math.random() * 5 + 5;
                 } else {
-                    this.size = isMobile ? Math.random() * 2 + 3 : Math.random() * 3 + 5;
+                    this.size = isMobile ? Math.random() * 5 + 6 : Math.random() * 6 + 8;
                 }
 
             } else if (type === 'background_float') {
@@ -197,17 +227,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetY = centerY + this.baseTargetY * pulseScale;
                 const dx = targetX - this.x;
                 const dy = targetY - this.y;
-                this.vx += dx * this.spring;
-                this.vy += dy * this.spring;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Progressive spring: starts slow, gets stronger as particles approach
+                const springForce = dist > 100 ? 0.002 : 0.006;
+
+                // Add slight spiral/curve to the approach
+                if (dist > 30 && !this.arrived) {
+                    const perpX = -dy * 0.0008; // Perpendicular force for spiral
+                    const perpY = dx * 0.0008;
+                    this.vx += perpX;
+                    this.vy += perpY;
+                } else {
+                    this.arrived = true;
+                }
+
+                this.vx += dx * springForce;
+                this.vy += dy * springForce;
                 this.vx *= this.friction;
                 this.vy *= this.friction;
                 this.x += this.vx;
                 this.y += this.vy;
+
+                // Gentle rotation while flying
+                if (!this.arrived) {
+                    this.angle += 0.02;
+                }
             }
             else if (state === 'EXPLODING') {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.2;
+                this.vy += 0.12; // Lighter gravity for floatier feel
+                this.vx *= 0.995; // Slight air resistance
+                this.vy *= 0.995;
+                this.life -= 0.008; // Gradual fade
+                this.angle += this.spinSpeed || 0; // Spin while flying
+                this.size *= 0.998; // Slowly shrink
             }
             else if (state === 'MAIN') {
                 if (this.type === 'background_float' || this.type === 'love_envelope') {
@@ -338,11 +393,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // INTRO PARTICLES - USE PRE-RENDERED SPIRTES
             else {
-                ctx.globalAlpha = 1;
+                ctx.globalAlpha = Math.max(0, this.life);
                 const sprite = particleSprites[this.spriteIndex].canvas;
                 // Draw image centered at x,y with scaled size
-                const drawSize = Math.max(1, this.size * 2);
-                ctx.drawImage(sprite, this.x - drawSize / 2, this.y - drawSize / 2, drawSize, drawSize);
+                const drawSize = Math.max(2, this.size * 2.5);
+                // Apply rotation for flying/exploding hearts
+                if (this.type === 'heart_intro' && (!this.arrived || state === 'EXPLODING')) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    ctx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(sprite, this.x - drawSize / 2, this.y - drawSize / 2, drawSize, drawSize);
+                }
+                ctx.globalAlpha = 1;
             }
         }
     }
@@ -380,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             introText.style.opacity = 1;
             introClickable = true;
-        }, 3500);
+        }, 1500);
     }
 
     // -----------------------------------------------------------------
@@ -420,10 +485,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let pulseScale = 1;
         if (state === 'INTRO') {
-            // Realistic heartbeat: ~72 BPM
-            pulseScale = 1 + heartbeatPulse(time * 3.77);
+            // Realistic heartbeat: ~75 BPM (slower, natural rhythm)
+            pulseScale = 1 + heartbeatPulse(time * 0.5);
             // Sort small to large for depth effect (Enabled for all for quality)
             particles.sort((a, b) => a.size - b.size);
+
+            // Sync "Kalbe Dokun" text with heartbeat
+            const beatValue = heartbeatPulse(time * 0.5);
+            const textScale = 1 + beatValue * 1.2; // Amplify for text
+            const glowIntensity = 10 + beatValue * 80; // Glow on beat
+            introText.style.transform = `scale(${textScale})`;
+            introText.style.textShadow = `0 0 ${glowIntensity}px #ff4d6d`;
         }
 
         // Filter out dead fireworks and shooting stars
@@ -445,8 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (state === 'EXPLODING') {
-            const visibleParticles = particles.filter(p => p.y < height + 100 && p.x > -100 && p.x < width + 100);
-            if (visibleParticles.length < particles.length * 0.1) {
+            // Remove fully faded particles
+            particles = particles.filter(p => p.life > 0.01 && p.size > 0.3);
+            if (particles.length < 50) {
                 if (state !== 'MAIN_TRANSITIONING') {
                     state = 'MAIN_TRANSITIONING';
                     startMainSequence();
@@ -607,10 +680,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dx = p.x - centerX;
                 const dy = p.y - (centerY + 50);
                 const angle = Math.atan2(dy, dx);
-                const force = Math.random() * 25 + 10;
-                p.vx = Math.cos(angle) * force;
-                p.vy = Math.sin(angle) * force;
+                const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+                // Varied force: outer particles fly faster
+                const baseForce = Math.random() * 15 + 8;
+                const distBonus = Math.min(distFromCenter * 0.02, 5);
+                const force = baseForce + distBonus;
+
+                // Add slight angle randomness for organic spread
+                const angleVariance = (Math.random() - 0.5) * 0.5;
+
+                p.vx = Math.cos(angle + angleVariance) * force;
+                p.vy = Math.sin(angle + angleVariance) * force;
                 p.friction = 0.98;
+                p.spinSpeed = (Math.random() - 0.5) * 0.15; // Random spin
+                p.life = 1; // Reset life for fadeout
             });
         }
     });

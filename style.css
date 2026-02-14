@@ -55,7 +55,7 @@ body {
     font-size: 1.5rem;
     color: #ffffff;
     text-shadow: 0 0 10px #ff4d6d;
-    animation: pulseText 2s infinite;
+    /* Animation controlled by JS heartbeat sync */
     z-index: 101;
     pointer-events: none;
     /* Let clicks pass to canvas */
@@ -160,6 +160,7 @@ body {
     /* Rose Gold Gradient */
     background: linear-gradient(to bottom, #fff0f3 0%, #ffccd5 50%, #ff4d6d 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 10px rgba(255, 77, 109, 0.8));
 
@@ -186,19 +187,50 @@ body {
 /* COUNTER STYLES */
 .counter-container {
     margin: 1.5rem 0;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.2rem 1rem;
+    background: linear-gradient(135deg, rgba(255, 77, 109, 0.08), rgba(0, 0, 0, 0.3), rgba(255, 77, 109, 0.05));
+    border-radius: 18px;
+    border: 1px solid rgba(255, 77, 109, 0.2);
     transform: translateZ(25px);
+    box-shadow: 0 8px 32px rgba(255, 77, 109, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle animated shine */
+.counter-container::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.03) 50%,
+            transparent 60%);
+    animation: counterShine 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes counterShine {
+
+    0%,
+    100% {
+        transform: translateX(-30%) translateY(-30%);
+    }
+
+    50% {
+        transform: translateX(30%) translateY(30%);
+    }
 }
 
 .counter-title {
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.9rem;
-    color: #ffcccb;
-    margin-bottom: 0.5rem;
-    letter-spacing: 2px;
+    font-size: 0.75rem;
+    color: rgba(255, 204, 203, 0.9);
+    margin-bottom: 0.8rem;
+    letter-spacing: 3px;
     text-transform: uppercase;
     text-align: center;
     width: 100%;
@@ -206,21 +238,48 @@ body {
 
 .counter {
     font-family: 'Montserrat', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #ffffff;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
 .time-unit {
-    background: rgba(255, 77, 109, 0.2);
-    padding: 5px 10px;
-    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(255, 77, 109, 0.15), rgba(255, 77, 109, 0.05));
+    padding: 10px 10px 8px;
+    border-radius: 12px;
     min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid rgba(255, 77, 109, 0.12);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.time-unit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 77, 109, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.time-number {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    background: linear-gradient(180deg, #ffffff 0%, #ff6b88 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 8px rgba(255, 77, 109, 0.5));
+}
+
+.time-label {
+    font-size: 0.55rem;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 204, 203, 0.7);
+    margin-top: 2px;
 }
 
 /* MESSAGE */
@@ -299,10 +358,15 @@ body {
 
 @media (max-width: 768px) {
     .names {
-        font-size: 2.5rem;
-        /* Reduced from 3rem */
-        flex-direction: column;
+        font-size: 2.8rem;
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 5px;
+    }
+
+    .names .amp {
+        font-size: 1.6rem;
+        align-self: center;
     }
 
     .card-container {
@@ -321,11 +385,24 @@ body {
 
     .counter {
         font-size: 0.9rem;
-        /* Smaller counter text */
+        gap: 5px;
+    }
+
+    .time-unit {
+        min-width: 45px;
+        padding: 6px 6px;
+    }
+
+    .time-number {
+        font-size: 1.1rem;
+    }
+
+    .time-label {
+        font-size: 0.5rem;
     }
 
     .counter-title {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 
     .message {
@@ -412,8 +489,8 @@ body {
 
 /* Mobile Responsiveness */
 .amp {
-    display: block;
-    margin: 10px 0;
+    display: inline;
+    margin: 0 5px;
 }
 
 
