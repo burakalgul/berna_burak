@@ -892,6 +892,10 @@
     let invulnerableTimer = 0; // NEW: Invulnerability timer
     let bernaAngryTimer = 0; // Berna anger timer for broken heart reaction
 
+    // --- NEW: Love Blast State ---
+    let loveBlastActive = false;
+    let loveBlastTimer = 0;
+
     // --- NEW: Background Theme State ---
     let currentBg1 = { r: 13, g: 0, b: 26 };
     let currentBg2 = { r: 26, g: 5, b: 32 };
@@ -1151,6 +1155,7 @@
         { emoji: '🛡️', type: 'shield', size: 35, speed: 1.5, duration: 8 },
         { emoji: '🧲', type: 'magnet', size: 35, speed: 1.5, duration: 8 },
         { emoji: '⏳', type: 'slowmo', size: 35, speed: 1.5, duration: 6 },
+        { emoji: '🌈', type: 'rainbow', size: 35, speed: 1.8, duration: 8 }, // NEW: Love Blast
     ];
 
     const GAME_OVER_MESSAGES = [
@@ -1484,6 +1489,19 @@
         } else if (type === 'slowmo') {
             slowMoActive = true;
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '⏳ Yavaşla!', true);
+        } else if (type === 'rainbow') {
+            loveBlastActive = true;
+            loveBlastTimer = 8;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🌈 LOVE BLAST!', true);
+            playSound('levelup');
+
+            // Instantly transmute all existing broken hearts on screen
+            fallingHearts.forEach(h => {
+                if (h.type.isBroken) {
+                    h.type = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
+                    addCatchEffect(h.x, h.y, '✨', true);
+                }
+            });
         }
     }
 
@@ -1907,6 +1925,11 @@
                 if (r <= 0) { type = t; break; }
             }
 
+            // Love Blast Transmutation: If active, new broken hearts become normal hearts
+            if (loveBlastActive && type.isBroken) {
+                type = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
+            }
+
             fallingHearts.push({
                 x: bernaX + (Math.random() - 0.5) * 40,
                 y: 20 + BERNA_SPRITE_SIZE,
@@ -2165,6 +2188,10 @@
             slowMoTimer -= dt * 2;
             if (slowMoTimer <= 0) { slowMoActive = false; }
         }
+        if (loveBlastActive) {
+            loveBlastTimer -= dt;
+            if (loveBlastTimer <= 0) { loveBlastActive = false; }
+        }
 
         // Draw Burak (DOM Transform + Canvas Effects)
 
@@ -2307,11 +2334,12 @@
         gameCtx.fillRect(0, gameH - 5, gameW, 5);
 
         // Active power-up indicators
-        if (shieldActive || magnetActive || slowMoActive) {
+        if (shieldActive || magnetActive || slowMoActive || loveBlastActive) {
             let indicators = [];
             if (shieldActive) indicators.push('🛡️ ' + Math.ceil(shieldTimer) + 's');
             if (magnetActive) indicators.push('🧲 ' + Math.ceil(magnetTimer) + 's');
             if (slowMoActive) indicators.push('⏳ ' + Math.ceil(slowMoTimer) + 's');
+            if (loveBlastActive) indicators.push('🌈 ' + Math.ceil(loveBlastTimer) + 's');
             gameCtx.font = '14px Montserrat, sans-serif';
             gameCtx.fillStyle = '#ffe5ec';
             gameCtx.textAlign = 'center';
