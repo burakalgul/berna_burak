@@ -1832,6 +1832,20 @@
                         addCatchEffect(h.x, burakTop, '-💔', false);
                         gameConsecutiveCatches = 0;
                         gameCombo = 1;
+
+                        // Berna gets angry!
+                        if (bernaEl) {
+                            bernaEl.style.filter = 'brightness(0.6) sepia(1) saturate(5) hue-rotate(-10deg) drop-shadow(0 0 12px red)';
+                            bernaEl.style.animation = 'bernaAngryShake 0.4s ease-out';
+                            setTimeout(() => {
+                                if (bernaEl) {
+                                    bernaEl.style.filter = '';
+                                    bernaEl.style.animation = '';
+                                }
+                            }, 600);
+                        }
+                        // Angry emoji burst above Berna
+                        addCatchEffect(bernaX, 20, '💢', true);
                     }
                 } else {
                     totalHeartsCaught++;
