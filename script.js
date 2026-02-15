@@ -890,6 +890,7 @@
     let slowMoTimer = 0;
     let damageFlash = 0;
     let invulnerableTimer = 0; // NEW: Invulnerability timer
+    let bernaAngryTimer = 0; // Berna anger timer for broken heart reaction
 
     // --- NEW: Stats tracking ---
     let totalHeartsCaught = 0;
@@ -1744,9 +1745,25 @@
             const scaleVariation = 1.0 + Math.sin(gameTime * 1.5) * 0.05;
             const scaleX = (bernaDir === -1 ? -1 : 1) * scaleVariation;
 
+            // 4. Angry shake offset
+            let angryShakeX = 0;
+            let angryShakeRot = 0;
+            if (bernaAngryTimer > 0) {
+                bernaAngryTimer -= dt;
+                const intensity = Math.min(1, bernaAngryTimer / 0.3);
+                angryShakeX = Math.sin(gameTime * 60) * 6 * intensity;
+                angryShakeRot = Math.sin(gameTime * 45) * 4 * intensity;
+            }
+
             // Apply transform
-            bernaEl.style.transform = `translate3d(${bernaX - 50}px, ${bernaY}px, 0) rotate(${rotationAngle}deg) scale(${scaleX}, ${scaleVariation})`;
-            bernaEl.style.filter = `drop-shadow(${-bernaDir * 5}px 10px 10px rgba(0,0,0,0.4))`;
+            bernaEl.style.transform = `translate3d(${bernaX - 50 + angryShakeX}px, ${bernaY}px, 0) rotate(${rotationAngle + angryShakeRot}deg) scale(${scaleX}, ${scaleVariation})`;
+
+            // Filter: angry red or normal shadow
+            if (bernaAngryTimer > 0) {
+                bernaEl.style.filter = `brightness(0.6) sepia(1) saturate(5) hue-rotate(-10deg) drop-shadow(0 0 15px red)`;
+            } else {
+                bernaEl.style.filter = `drop-shadow(${-bernaDir * 5}px 10px 10px rgba(0,0,0,0.4))`;
+            }
         }
 
         /* 
@@ -1834,16 +1851,7 @@
                         gameCombo = 1;
 
                         // Berna gets angry!
-                        if (bernaEl) {
-                            bernaEl.style.filter = 'brightness(0.6) sepia(1) saturate(5) hue-rotate(-10deg) drop-shadow(0 0 12px red)';
-                            bernaEl.style.animation = 'bernaAngryShake 0.4s ease-out';
-                            setTimeout(() => {
-                                if (bernaEl) {
-                                    bernaEl.style.filter = '';
-                                    bernaEl.style.animation = '';
-                                }
-                            }, 600);
-                        }
+                        bernaAngryTimer = 0.5; // 0.5 seconds of anger
                         // Angry emoji burst above Berna
                         addCatchEffect(bernaX, 20, '💢', true);
                     }
