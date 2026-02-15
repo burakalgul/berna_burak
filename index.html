@@ -85,6 +85,7 @@
     <!-- GAME OVERLAY -->
     <div id="game-overlay" class="game-overlay">
         <button id="game-close" class="game-close-btn">✕</button>
+        <button id="game-pause" class="game-pause-btn">⏸️</button>
         <div class="game-hud">
             <div class="game-hud-item">
                 <span class="hud-label">CAN</span>
@@ -97,6 +98,7 @@
             <div class="game-hud-item">
                 <span class="hud-label">BÖLÜM</span>
                 <span class="hud-value" id="game-wave">1</span>
+                <span class="hud-sub-value" id="game-wave-name">Tanışma</span>
             </div>
             <div class="game-hud-item">
                 <span class="hud-label">KOMBO</span>
@@ -112,10 +114,33 @@
         </div>
 
         <canvas id="game-canvas"></canvas>
+        <!-- Tutorial Overlay -->
+        <div id="game-tutorial" class="game-tutorial">
+            <div class="tutorial-content">
+                <div class="tutorial-icon">👆</div>
+                <p class="tutorial-text">Parmağını kaydırarak<br>kalpleri yakala!</p>
+                <p class="tutorial-sub">Ekrana dokun veya fareyi hareket ettir</p>
+            </div>
+        </div>
+        <div id="game-paused-screen" class="game-paused-screen">
+            <h2 class="paused-title">DURAKLATILDI</h2>
+            <p class="paused-sub">Devam Etmek İçin Tekrar Bas</p>
+        </div>
         <div id="game-over-screen" class="game-over-screen">
             <h2 class="game-over-title" id="game-over-title">💔 Oyun Bitti!</h2>
             <p class="game-over-score">Skorunuz: <span id="final-score">0</span></p>
+            <p class="game-over-highscore" id="game-highscore-text"></p>
             <p class="game-over-wave">Ulaşılan Bölüm: <span id="final-wave">1</span></p>
+            <div class="game-stats-grid" id="game-stats-grid">
+                <div class="stat-item"><span class="stat-value" id="stat-hearts">0</span><span
+                        class="stat-label">Kalp</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-combo">0</span><span class="stat-label">Max
+                        Kombo</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-time">0s</span><span
+                        class="stat-label">Süre</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-bosses">0</span><span
+                        class="stat-label">Boss</span></div>
+            </div>
             <p class="game-over-message" id="game-over-msg"></p>
             <div class="game-over-buttons">
                 <button id="game-restart" class="game-btn game-btn-primary">🔄 Tekrar Oyna</button>

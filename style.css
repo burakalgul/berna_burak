@@ -857,6 +857,16 @@ body {
     filter: drop-shadow(0 0 5px rgba(255, 77, 109, 0.5));
 }
 
+.hud-sub-value {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.5rem;
+    color: #ff99ac;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: -2px;
+}
+
 #game-lives {
     background: none;
     -webkit-text-fill-color: initial;
@@ -958,11 +968,13 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    z-index: 2200;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(12px);
+    z-index: 2300;
     padding: 20px;
     box-sizing: border-box;
+    overflow-y: auto;
+    /* Allow scrolling if content is too tall */
 }
 
 .game-over-screen.active {
@@ -1150,5 +1162,264 @@ body {
     .game-btn {
         width: 100%;
         text-align: center;
+        padding: 15px 20px;
+        /* Larger tap targets */
     }
+
+    .game-over-screen {
+        justify-content: flex-start;
+        /* Start from top on mobile to ensure scrolling works */
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+}
+
+/* ============================================== */
+/* PAUSE BUTTON                                   */
+/* ============================================== */
+.game-pause-btn {
+    position: absolute;
+    top: 15px;
+    right: 75px;
+    /* Moved further from X button */
+    z-index: 2250;
+    /* Above everything including HUD and Pause Screen */
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 1.2rem;
+    width: 44px;
+    /* Slightly larger for easier tap */
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+}
+
+.game-pause-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================== */
+/* TUTORIAL OVERLAY                               */
+/* ============================================== */
+.game-tutorial {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease;
+}
+
+.game-tutorial.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.tutorial-content {
+    text-align: center;
+    color: white;
+}
+
+.tutorial-icon {
+    font-size: 4rem;
+    animation: tutorialBounce 1.5s ease-in-out infinite;
+}
+
+.tutorial-text {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+    color: #ffccd5;
+}
+
+.tutorial-sub {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes tutorialBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+/* ============================================== */
+/* STATS GRID & HIGH SCORE                        */
+/* ============================================== */
+.game-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 12px auto;
+    max-width: 320px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 8px 4px;
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ff6b88;
+}
+
+.stat-label {
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.game-over-highscore {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    color: #ffd700;
+    margin: 4px 0;
+}
+
+@media(max-width:768px) {
+    .game-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 200px;
+    }
+}
+
+/* ============================================== */
+/* COUNTDOWN OVERLAY                              */
+/* ============================================== */
+.countdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.countdown-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.countdown-number {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 8rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 30px #ff4d6d, 0 0 60px #ff0033;
+    transform: scale(0.5);
+    opacity: 0;
+}
+
+.countdown-number.animate {
+    animation: countdownPop 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.countdown-text {
+    font-family: 'Great Vibes', cursive;
+    font-size: 3rem;
+    color: #ffccd5;
+    margin-top: 1rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+
+.countdown-text.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes countdownPop {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* ============================================== */
+/* GAME PAUSED SCREEN                             */
+/* ============================================== */
+.game-paused-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 2040;
+}
+
+.game-paused-screen.active {
+    display: flex;
+}
+
+.paused-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 5px;
+    text-shadow: 0 0 20px rgba(255, 77, 109, 0.6);
+    margin: 0;
+}
+
+.paused-sub {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 10px;
 }
