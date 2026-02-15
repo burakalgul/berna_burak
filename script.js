@@ -892,6 +892,12 @@
     let invulnerableTimer = 0; // NEW: Invulnerability timer
     let bernaAngryTimer = 0; // Berna anger timer for broken heart reaction
 
+    // --- NEW: Background Theme State ---
+    let currentBg1 = { r: 13, g: 0, b: 26 };
+    let currentBg2 = { r: 26, g: 5, b: 32 };
+    let targetBg1 = { r: 13, g: 0, b: 26 };
+    let targetBg2 = { r: 26, g: 5, b: 32 };
+
     // --- NEW: Stats tracking ---
     let totalHeartsCaught = 0;
     let longestCombo = 0;
@@ -1027,6 +1033,40 @@
         } catch (e) { /* Audio not supported */ }
     }
 
+    // --- NEW: Color Translation Helpers ---
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    function lerp(a, b, u) {
+        return a + (b - a) * u;
+    }
+
+    function updateBackgroundTheme(dt) {
+        if (!gameOverlay) return;
+
+        // Smoothly interpolate current colors towards targets
+        const speed = 0.5 * dt; // Adjust transition speed
+        currentBg1.r = lerp(currentBg1.r, targetBg1.r, speed);
+        currentBg1.g = lerp(currentBg1.g, targetBg1.g, speed);
+        currentBg1.b = lerp(currentBg1.b, targetBg1.b, speed);
+
+        currentBg2.r = lerp(currentBg2.r, targetBg2.r, speed);
+        currentBg2.g = lerp(currentBg2.g, targetBg2.g, speed);
+        currentBg2.b = lerp(currentBg2.b, targetBg2.b, speed);
+
+        // Apply to CSS variables
+        const rgb1 = `rgb(${Math.round(currentBg1.r)}, ${Math.round(currentBg1.g)}, ${Math.round(currentBg1.b)})`;
+        const rgb2 = `rgb(${Math.round(currentBg2.r)}, ${Math.round(currentBg2.g)}, ${Math.round(currentBg2.b)})`;
+        gameOverlay.style.setProperty('--bg-1', rgb1);
+        gameOverlay.style.setProperty('--bg-2', rgb2);
+    }
+
     const BURAK_SPRITE_SIZE = 120;
     const BERNA_SPRITE_SIZE = 100;
     const BURAK_CATCH_W = 100;
@@ -1036,42 +1076,50 @@
         {
             name: "Tanışma 💫", scoreTarget: 500, spawnRate: 0.025, speedMul: 1.0, brokenWeight: 0,
             boss: { emoji: '👾', color: '#a855f7', ability: 'standard' },
-            desc: "İlk bakışta her şey güzel..."
+            desc: "İlk bakışta her şey güzel...",
+            colors: ['#0d001a', '#1a0520']
         },
         {
             name: "İlk Kıvılcım 🎇", scoreTarget: 800, spawnRate: 0.03, speedMul: 1.15, brokenWeight: 5,
             boss: { emoji: '🧛', color: '#ff4444', ability: 'fast' },
-            desc: "Kelebekler uçuşuyor!"
+            desc: "Kelebekler uçuşuyor!",
+            colors: ['#1a0520', '#2d0a3e']
         },
         {
             name: "Buluşmalar ☕", scoreTarget: 1200, spawnRate: 0.035, speedMul: 1.25, brokenWeight: 10,
             boss: { emoji: '👻', color: '#ffffff', ability: 'pulse' },
-            desc: "Her an yeni bir anı."
+            desc: "Her an yeni bir anı.",
+            colors: ['#2d0a3e', '#4a0e2a']
         },
         {
             name: "Derin Bağ 🔗", scoreTarget: 1500, spawnRate: 0.04, speedMul: 1.4, brokenWeight: 15,
             boss: { emoji: '🌪️', color: '#94a3b8', ability: 'wind' },
-            desc: "Aşkınız güçleniyor."
+            desc: "Aşkınız güçleniyor.",
+            colors: ['#4a0e2a', '#1a0b1c']
         },
         {
             name: "Fırtına Öncesi 🌪️", scoreTarget: 2000, spawnRate: 0.05, speedMul: 1.6, brokenWeight: 25,
             boss: { emoji: '⚡', color: '#facc15', ability: 'burst' },
-            desc: "Zorluklar sizi yıldırmasın!"
+            desc: "Zorluklar sizi yıldırmasın!",
+            colors: ['#1a0b1c', '#0f172a']
         },
         {
             name: "Güneşli Günler 🌞", scoreTarget: 2500, spawnRate: 0.045, speedMul: 1.4, brokenWeight: 10,
             boss: { emoji: '🐲', color: '#22c55e', ability: 'magnet' },
-            desc: "Her şey yolunda."
+            desc: "Her şey yolunda.",
+            colors: ['#0f172a', '#1a2e05']
         },
         {
             name: "Sonsuz Güven 🤝", scoreTarget: 3000, spawnRate: 0.055, speedMul: 1.7, brokenWeight: 20,
             boss: { emoji: '👑', color: '#fbbf24', ability: 'mirage' },
-            desc: "Birbirinize güvenin."
+            desc: "Birbirinize güvenin.",
+            colors: ['#1a2e05', '#06201e']
         },
         {
             name: "Sonsuzluk ♾️", scoreTarget: Infinity, spawnRate: 0.065, speedMul: 1.9, brokenWeight: 30,
             boss: { emoji: '💎', color: '#38bdf8', ability: 'chaos' },
-            desc: "Aşk sonsuza kadar!"
+            desc: "Aşk sonsuza kadar!",
+            colors: ['#06201e', '#0d001a']
         },
     ];
 
@@ -1333,6 +1381,10 @@
         waveBanner.innerHTML = text + (subtitle ? '<br><span style="font-size:0.5em;font-family:Montserrat;opacity:0.7">' + subtitle + '</span>' : '');
         waveBanner.classList.add('active');
         if (gameWaveNameEl) gameWaveNameEl.textContent = text;
+
+        // Trigger background color change to target wave's theme
+        updateWaveColors();
+
         setTimeout(() => {
             waveBanner.classList.remove('active');
             setTimeout(() => { waveTransitioning = false; }, 500);
@@ -1351,6 +1403,14 @@
             bossHitFlash = 0;
             playSound('boss');
             addCatchEffect(bossX, bossY, 'AZKALDI! BOSS GELDİ!', true);
+        }
+    }
+
+    function updateWaveColors() {
+        const config = getCurrentWaveConfig();
+        if (config && config.colors) {
+            targetBg1 = hexToRgb(config.colors[0]);
+            targetBg2 = hexToRgb(config.colors[1]);
         }
     }
 
@@ -1444,6 +1504,9 @@
         const effect = config.effect || 'none';
         const centerX = gameW / 2;
         const centerY = gameH / 2;
+
+        // Background Transition Update
+        updateBackgroundTheme(dt);
 
         gameCtx.setTransform(1, 0, 0, 1, 0, 0); // RESET TRANSFORM
         gameCtx.clearRect(0, 0, gameW, gameH);
@@ -1544,7 +1607,29 @@
                     bossesDefeated++;
                     gameScore += 500;
                     if (gameScoreEl) gameScoreEl.textContent = gameScore;
-                    addCatchEffect(gameW / 2, gameH / 2, 'BOSS YENİLDİ! +500', true);
+
+                    // --- ENHANCED BOSS DEATH EFFECT ---
+
+                    // 1. Massive particle burst
+                    for (let i = 0; i < 60; i++) {
+                        setTimeout(() => {
+                            const rx = bossX + (Math.random() - 0.5) * 120;
+                            const ry = (bossY + Math.sin(gameTime * 2) * 20) + (Math.random() - 0.5) * 120;
+                            const emoji = Math.random() > 0.5 ? '❤️' : '✨';
+                            addCatchEffect(rx, ry, emoji, true);
+                        }, i * 12);
+                    }
+
+                    // 2. Final large explosion marker
+                    addCatchEffect(bossX, bossY + Math.sin(gameTime * 2) * 20, '💖 BOOM! 💖', true);
+
+                    // 3. Screen flash
+                    damageFlash = 1.0;
+
+                    // 4. Temporary slow motion for impact
+                    slowMoActive = true;
+                    slowMoTimer = 1.0;
+
                     playSound('levelup');
 
                     // PROGRESS TO NEXT WAVE
