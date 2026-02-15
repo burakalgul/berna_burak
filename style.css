@@ -857,6 +857,12 @@ body {
     filter: drop-shadow(0 0 5px rgba(255, 77, 109, 0.5));
 }
 
+#game-lives {
+    background: none;
+    -webkit-text-fill-color: initial;
+    text-shadow: 0 0 5px rgba(255, 77, 109, 0.5);
+}
+
 /* ============================================== */
 /* WAVE BANNER                                    */
 /* ============================================== */
