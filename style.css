@@ -1117,10 +1117,14 @@ body {
 @media (max-width: 768px) {
     .game-hud {
         gap: 4px;
-        padding: 6px 10px;
-        margin-top: 60px;
-        /* Dropped below buttons */
-        transform: scale(0.9);
+        padding: 5px 8px;
+        margin-top: 15px;
+        /* Aligned with buttons */
+        transform: scale(0.85);
+        /* Slightly smaller to fit */
+        max-width: calc(100% - 90px);
+        /* Prevent overlap with buttons */
+        justify-content: center;
     }
 
     .game-hud-item {
