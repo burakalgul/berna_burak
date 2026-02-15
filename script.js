@@ -1608,25 +1608,44 @@
                     gameScore += 500;
                     if (gameScoreEl) gameScoreEl.textContent = gameScore;
 
-                    // --- ENHANCED BOSS DEATH EFFECT ---
+                    // --- ENHANCED BOSS DEATH EFFECT (OPTIMIZED) ---
 
-                    // 1. Massive particle burst
-                    for (let i = 0; i < 60; i++) {
-                        setTimeout(() => {
-                            const rx = bossX + (Math.random() - 0.5) * 120;
-                            const ry = (bossY + Math.sin(gameTime * 2) * 20) + (Math.random() - 0.5) * 120;
-                            const emoji = Math.random() > 0.5 ? '❤️' : '✨';
-                            addCatchEffect(rx, ry, emoji, true);
-                        }, i * 12);
+                    // 1. One-time massive particle burst
+                    for (let i = 0; i < 80; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const force = 2 + Math.random() * 8;
+                        const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+                        catchEffects.push({
+                            x: bossX,
+                            y: renderBossY,
+                            vx: Math.cos(angle) * force,
+                            vy: Math.sin(angle) * force,
+                            life: 1 + Math.random() * 0.5,
+                            color: `hsl(${340 + Math.random() * 40}, 100%, 70%)`,
+                            size: Math.random() * 4 + 2,
+                            sparkle: Math.random() > 0.5
+                        });
                     }
 
-                    // 2. Final large explosion marker
+                    // 2. A few rings for visual flare
+                    for (let j = 0; j < 5; j++) {
+                        setTimeout(() => {
+                            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+                            catchEffects.push({
+                                x: bossX, y: renderBossY,
+                                vx: 0, vy: 0, life: 1, isRing: true,
+                                color: '#ffffff', size: 30 + j * 10
+                            });
+                        }, j * 100);
+                    }
+
+                    // 3. Final large explosion marker (Single text instead of 60)
                     addCatchEffect(bossX, bossY + Math.sin(gameTime * 2) * 20, '💖 BOOM! 💖', true);
 
-                    // 3. Screen flash
+                    // 4. Screen flash
                     damageFlash = 1.0;
 
-                    // 4. Temporary slow motion for impact
+                    // 5. Temporary slow motion for impact
                     slowMoActive = true;
                     slowMoTimer = 1.0;
 
@@ -2230,7 +2249,11 @@
            (Previous drawImage(burakImg) code deleted)
         */
 
-        // Draw catch effects
+        // Draw catch effects (Optimized)
+        let lastFont = '';
+        let lastAlign = '';
+        let lastAlpha = -1;
+
         for (let i = catchEffects.length - 1; i >= 0; i--) {
             const e = catchEffects[i];
             e.x += e.vx;
@@ -2239,13 +2262,22 @@
 
             if (e.life <= 0) { catchEffects.splice(i, 1); continue; }
 
-            gameCtx.globalAlpha = e.life;
+            if (e.life !== lastAlpha) {
+                gameCtx.globalAlpha = e.life;
+                lastAlpha = e.life;
+            }
+
             if (e.isText) {
-                gameCtx.font = `bold ${e.size}px Montserrat, sans-serif`;
+                const font = `bold ${e.size}px Montserrat, sans-serif`;
+                if (font !== lastFont) {
+                    gameCtx.font = font;
+                    lastFont = font;
+                }
+                if (lastAlign !== 'center') {
+                    gameCtx.textAlign = 'center';
+                    lastAlign = 'center';
+                }
                 gameCtx.fillStyle = e.color;
-                gameCtx.textAlign = 'center';
-                // iOS Fix for text effects
-                gameCtx.fillStyle = e.color; // Should already be solid, but good to be explicit if it wasn't
                 gameCtx.fillText(e.text, e.x, e.y);
             } else if (e.isRing) {
                 gameCtx.strokeStyle = e.color;
@@ -2260,8 +2292,8 @@
                 gameCtx.arc(e.x, e.y, e.size * e.life, 0, Math.PI * 2);
                 gameCtx.fill();
             }
-            gameCtx.globalAlpha = 1;
         }
+        gameCtx.globalAlpha = 1.0;
 
         // Ground line
         gameCtx.fillStyle = 'rgba(255, 77, 109, 0.15)';
