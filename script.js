@@ -1748,25 +1748,33 @@
             // 4. Angry shake offset
             let angryShakeX = 0;
             let angryShakeRot = 0;
+            let bernaFilterMode = 'normal'; // 'angry', 'clearing', or 'normal'
+
             if (bernaAngryTimer > 0) {
                 bernaAngryTimer -= dt;
                 if (bernaAngryTimer <= 0) {
-                    bernaAngryTimer = 0;
-                    // Force-clear filter for iOS/mobile
-                    bernaEl.style.filter = 'none';
+                    bernaAngryTimer = -1; // Signal: clearing frame needed
+                    bernaFilterMode = 'clearing';
                 } else {
+                    bernaFilterMode = 'angry';
                     const intensity = Math.min(1, bernaAngryTimer / 0.5);
                     angryShakeX = Math.sin(gameTime * 60) * 6 * intensity;
                     angryShakeRot = Math.sin(gameTime * 45) * 4 * intensity;
                 }
+            } else if (bernaAngryTimer === -1) {
+                // One frame has passed with 'none', now safe to restore normal
+                bernaAngryTimer = 0;
+                bernaFilterMode = 'normal';
             }
 
             // Apply transform
             bernaEl.style.transform = `translate3d(${bernaX - 50 + angryShakeX}px, ${bernaY}px, 0) rotate(${rotationAngle + angryShakeRot}deg) scale(${scaleX}, ${scaleVariation})`;
 
-            // Filter: angry red or normal shadow
-            if (bernaAngryTimer > 0) {
+            // Single filter assignment point
+            if (bernaFilterMode === 'angry') {
                 bernaEl.style.filter = `brightness(0.6) sepia(1) saturate(5) hue-rotate(-10deg) drop-shadow(0 0 15px red)`;
+            } else if (bernaFilterMode === 'clearing') {
+                bernaEl.style.filter = 'none';
             } else {
                 bernaEl.style.filter = `drop-shadow(${-bernaDir * 5}px 10px 10px rgba(0,0,0,0.4))`;
             }
