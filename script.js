@@ -1123,19 +1123,26 @@
         },
     ];
 
-    // Heart types
-    function getHeartTypes(wave) {
+    // Heart types (Accept lives to implement smart spawning)
+    function getHeartTypes(wave, currentLives) {
         const brokenW = WAVES[Math.min(wave - 1, WAVES.length - 1)].brokenWeight;
+
+        // Smart Spawning for Life Heart: more likely if low health
+        let lifeWeight = 2;
+        if (currentLives <= 1) lifeWeight = 10;
+        else if (currentLives <= 2) lifeWeight = 6;
+        else if (currentLives <= 3) lifeWeight = 4;
+
         return [
             { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 },
             { emoji: '💖', points: 25, size: 32, speed: 2.0, weight: 20 },
-            { emoji: '💎', points: 50, size: 26, speed: 3.5, weight: 8, isDiamond: true },
+            { emoji: '💎', points: 50, size: 26, speed: 3.5, weight: 10, isDiamond: true }, // Slightly buffed
             { emoji: '💔', points: -1, size: 28, speed: 3.0, weight: brokenW, isBroken: true },
-            // Special hearts
-            { emoji: '🥇', points: 100, size: 30, speed: 4.0, weight: 3, isGold: true },
-            { emoji: '🧊', points: 15, size: 28, speed: 2.8, weight: 4, isIce: true },
-            { emoji: '💗', points: 20, size: 56, speed: 1.8, weight: 5, isGiant: true },
-            { emoji: '🏩', points: 0, size: 28, speed: 2.2, weight: 2, isLife: true },
+            // Special hearts (Slightly increased weights for better late-game presence)
+            { emoji: '🥇', points: 100, size: 30, speed: 4.0, weight: 5, isGold: true },
+            { emoji: '🧊', points: 15, size: 28, speed: 2.8, weight: 6, isIce: true },
+            { emoji: '💗', points: 20, size: 56, speed: 1.8, weight: 6, isGiant: true },
+            { emoji: '🏩', points: 0, size: 28, speed: 2.2, weight: lifeWeight, isLife: true },
         ];
     }
 
@@ -1891,7 +1898,7 @@
 
         // Spawn hearts from Berna (Suppressed during boss fight)
         if (!waveTransitioning && !bossActive && Math.random() < config.spawnRate) {
-            const heartTypes = getHeartTypes(currentWave);
+            const heartTypes = getHeartTypes(currentWave, gameLives);
             const totalWeight = heartTypes.reduce((s, t) => s + t.weight, 0);
             let r = Math.random() * totalWeight;
             let type = heartTypes[0];
