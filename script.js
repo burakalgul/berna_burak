@@ -1495,6 +1495,8 @@
             gameCtx.font = '85px serif';
             gameCtx.textAlign = 'center';
             gameCtx.textBaseline = 'middle';
+            // iOS Fix: Reset fillStyle to ensure emoji renders visible
+            gameCtx.fillStyle = '#000000';
             gameCtx.fillText(bossConfig.emoji, 0, 0);
 
             // Reset shadow
@@ -1962,6 +1964,8 @@
             gameCtx.font = `${h.type.size}px serif`;
             gameCtx.textAlign = 'center';
             gameCtx.textBaseline = 'middle';
+            // iOS Fix: Reset fillStyle
+            gameCtx.fillStyle = '#000000';
             gameCtx.fillText(h.type.emoji, 0, 0);
             gameCtx.restore();
         }
@@ -1991,6 +1995,8 @@
             gameCtx.font = `${pu.type.size}px serif`;
             gameCtx.textAlign = 'center';
             gameCtx.textBaseline = 'middle';
+            // iOS Fix: Reset fillStyle
+            gameCtx.fillStyle = '#000000';
             gameCtx.fillText(pu.type.emoji, 0, 0);
             gameCtx.globalAlpha = 1;
             gameCtx.restore();
@@ -2117,6 +2123,8 @@
                 gameCtx.font = `bold ${e.size}px Montserrat, sans-serif`;
                 gameCtx.fillStyle = e.color;
                 gameCtx.textAlign = 'center';
+                // iOS Fix for text effects
+                gameCtx.fillStyle = e.color; // Should already be solid, but good to be explicit if it wasn't
                 gameCtx.fillText(e.text, e.x, e.y);
             } else if (e.isRing) {
                 gameCtx.strokeStyle = e.color;

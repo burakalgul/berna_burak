@@ -1116,13 +1116,16 @@ body {
 /* ============================================== */
 @media (max-width: 768px) {
     .game-hud {
-        gap: 8px;
-        padding: 8px 12px;
-        margin-top: 6px;
+        gap: 4px;
+        padding: 6px 10px;
+        margin-top: 60px;
+        /* Dropped below buttons */
+        transform: scale(0.9);
     }
 
     .game-hud-item {
-        min-width: 45px;
+        min-width: 40px;
+        gap: 0;
     }
 
     .hud-value {
@@ -1130,11 +1133,25 @@ body {
     }
 
     .hud-label {
-        font-size: 0.45rem;
+        font-size: 0.4rem;
+        letter-spacing: 1px;
     }
 
-    .game-wave-banner {
-        font-size: 1.8rem;
+    .game-close-btn {
+        width: 36px;
+        height: 36px;
+        top: 15px;
+        right: 15px;
+        font-size: 1.1rem;
+    }
+
+    .game-pause-btn {
+        width: 36px;
+        height: 36px;
+        top: 15px;
+        right: auto;
+        left: 15px;
+        font-size: 1.1rem;
     }
 
     .game-over-title {
