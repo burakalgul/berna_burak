@@ -735,3 +735,414 @@ body {
         font-size: 0.9rem;
     }
 }
+
+/* ============================================== */
+/* EASTER EGG HINT                                */
+/* ============================================== */
+.easter-egg-hint {
+    position: absolute;
+    bottom: -8px;
+    right: -12px;
+    font-size: 0.65rem;
+    opacity: 0;
+    animation: easterEggReveal 12s ease-in-out infinite 8s;
+    pointer-events: none;
+    z-index: 65;
+    filter: drop-shadow(0 0 3px rgba(168, 85, 247, 0.6));
+}
+
+@keyframes easterEggReveal {
+
+    0%,
+    85%,
+    100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(-20deg);
+    }
+
+    90%,
+    95% {
+        opacity: 0.7;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.heart-container {
+    cursor: pointer;
+}
+
+/* ============================================== */
+/* GAME OVERLAY                                   */
+/* ============================================== */
+.game-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #0d001a 0%, #1a0520 30%, #2d0a3e 60%, #1a0b1c 100%);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+
+.game-overlay.active {
+    display: flex;
+}
+
+.game-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    z-index: 2100;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffe5ec;
+    font-size: 1.3rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.game-close-btn:hover {
+    background: rgba(255, 77, 109, 0.4);
+    transform: scale(1.1);
+}
+
+/* ============================================== */
+/* GAME HUD                                       */
+/* ============================================== */
+.game-hud {
+    display: flex;
+    gap: 12px;
+    padding: 10px 18px;
+    margin-top: 10px;
+    z-index: 2050;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 77, 109, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.game-hud-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 55px;
+}
+
+.hud-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.55rem;
+    color: rgba(255, 204, 213, 0.7);
+    letter-spacing: 2px;
+    font-weight: 500;
+}
+
+.hud-value {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: linear-gradient(180deg, #ffffff 0%, #ff6b88 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 5px rgba(255, 77, 109, 0.5));
+}
+
+/* ============================================== */
+/* WAVE BANNER                                    */
+/* ============================================== */
+.game-wave-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2150;
+    font-family: 'Great Vibes', cursive;
+    font-size: 2.5rem;
+    color: #ffe5ec;
+    text-shadow: 0 0 30px rgba(255, 77, 109, 0.8), 0 0 60px rgba(168, 85, 247, 0.4);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    white-space: nowrap;
+}
+
+.game-wave-banner.active {
+    opacity: 1;
+    animation: waveBannerIn 0.6s ease-out;
+}
+
+@keyframes waveBannerIn {
+    0% {
+        transform: translate(-50%, -50%) scale(0.3);
+        opacity: 0;
+    }
+
+    60% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ============================================== */
+/* GAME CANVAS                                    */
+/* ============================================== */
+#game-canvas {
+    flex: 1;
+    width: 100%;
+    max-width: 600px;
+    border-radius: 0;
+    z-index: 2010;
+    touch-action: none;
+}
+
+/* Screen shake on damage */
+.game-overlay.shake {
+    animation: screenShake 0.4s ease-out;
+}
+
+@keyframes screenShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-8px);
+    }
+
+    40% {
+        transform: translateX(8px);
+    }
+
+    60% {
+        transform: translateX(-5px);
+    }
+
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+/* ============================================== */
+/* GAME OVER SCREEN                               */
+/* ============================================== */
+.game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 2200;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.game-over-screen.active {
+    display: flex;
+}
+
+.game-over-title {
+    font-family: 'Great Vibes', cursive;
+    font-size: 3rem;
+    background: linear-gradient(to bottom, #fff0f3 0%, #ff4d6d 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.8rem;
+    animation: heartPulse 1.5s ease-in-out infinite;
+}
+
+.game-over-score {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
+    color: #ffe5ec;
+    margin-bottom: 0.3rem;
+}
+
+.game-over-score span {
+    font-weight: 700;
+    font-size: 2rem;
+    background: linear-gradient(180deg, #ffffff 0%, #ff6b88 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.game-over-wave {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    color: rgba(255, 204, 213, 0.8);
+    margin-bottom: 0.5rem;
+}
+
+.game-over-wave span {
+    font-weight: 700;
+    color: #ff99ac;
+}
+
+.game-over-message {
+    font-family: 'Great Vibes', cursive;
+    font-size: 1.8rem;
+    color: #ffccd5;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    max-width: 80%;
+}
+
+.game-over-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.game-btn {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 12px 28px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+}
+
+.game-btn-primary {
+    background: linear-gradient(135deg, #ff4d6d, #c9184a);
+    color: white;
+    box-shadow: 0 5px 20px rgba(255, 77, 109, 0.4);
+}
+
+.game-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 77, 109, 0.5);
+}
+
+.game-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffe5ec;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.game-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Character GIFs */
+.game-characters {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 600px;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
+    z-index: 5;
+    overflow: hidden;
+}
+
+.game-char {
+    position: absolute;
+    bottom: 20px;
+    width: 100px;
+    /* Default size, JS will control */
+    height: auto;
+    object-fit: contain;
+    will-change: transform;
+    /* Hint browser for optimization */
+    filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
+    /* CSS shadow is faster than Canvas shadow */
+}
+
+.berna-char {
+    top: 20px;
+    bottom: auto;
+}
+
+.burak-char {
+    bottom: 20px;
+    top: auto;
+}
+
+/* Ensure canvas is below characters but above background */
+#game-canvas {
+    z-index: 1;
+}
+
+/* ============================================== */
+/* GAME MOBILE RESPONSIVE                         */
+/* ============================================== */
+@media (max-width: 768px) {
+    .game-hud {
+        gap: 8px;
+        padding: 8px 12px;
+        margin-top: 6px;
+    }
+
+    .game-hud-item {
+        min-width: 45px;
+    }
+
+    .hud-value {
+        font-size: 0.9rem;
+    }
+
+    .hud-label {
+        font-size: 0.45rem;
+    }
+
+    .game-wave-banner {
+        font-size: 1.8rem;
+    }
+
+    .game-over-title {
+        font-size: 2.2rem;
+    }
+
+    .game-over-score {
+        font-size: 1.2rem;
+    }
+
+    .game-over-score span {
+        font-size: 1.5rem;
+    }
+
+    .game-over-message {
+        font-size: 1.3rem;
+    }
+
+    .game-over-buttons {
+        flex-direction: column;
+        gap: 10px;
+        width: 80%;
+    }
+
+    .game-btn {
+        width: 100%;
+        text-align: center;
+    }
+}

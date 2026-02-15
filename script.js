@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
 
     // DOM Elements
     const introText = document.getElementById('intro-text');
@@ -830,5 +830,771 @@ document.addEventListener('DOMContentLoaded', () => {
             particles.push(p);
         }
     }
+
+    // =================================================================
+    // KALPLERI YAKALA MINI GAME - ENHANCED WITH CHIBI SPRITES
+    // =================================================================
+    const gameOverlay = document.getElementById('game-overlay');
+    const bernaEl = document.getElementById('berna-char'); // DOM element for GIF
+    const burakEl = document.getElementById('burak-char'); // DOM element for GIF
+    const gameCanvas = document.getElementById('game-canvas');
+    const gameCtx = gameCanvas ? gameCanvas.getContext('2d') : null;
+    const gameScoreEl = document.getElementById('game-score');
+    const gameLivesEl = document.getElementById('game-lives');
+    const gameWaveEl = document.getElementById('game-wave');
+    const gameComboEl = document.getElementById('game-combo');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const gameOverTitle = document.getElementById('game-over-title');
+    const finalScoreEl = document.getElementById('final-score');
+    const finalWaveEl = document.getElementById('final-wave');
+    const gameOverMsgEl = document.getElementById('game-over-msg');
+    const gameCloseBtn = document.getElementById('game-close');
+    const gameRestartBtn = document.getElementById('game-restart');
+    const gameQuitBtn = document.getElementById('game-quit');
+    const waveBanner = document.getElementById('game-wave-banner');
+    const heartEasterEgg = document.getElementById('heart-easter-egg');
+
+    // Load chibi character images
+    const bernaImg = new Image();
+    bernaImg.src = 'berna_chibi.png';
+    const burakImg = new Image();
+    burakImg.src = 'burak_chibi.png';
+
+    let gameActive = false;
+    let gameScore = 0;
+    let gameLives = 3;
+    let gameCombo = 1;
+    let gameConsecutiveCatches = 0;
+    let gameAnimFrame = null;
+    let fallingHearts = [];
+    let catchEffects = [];
+    let gameStars = [];
+    let gamePowerUps = [];
+    let burakX = 0;
+    let gameW = 0;
+    let gameH = 0;
+    let bernaX = 0;
+    let bernaDir = 1;
+    let gameTime = 0;
+    let gameFrameCount = 0;
+    let currentWave = 1;
+    let waveTransitioning = false;
+    let shieldActive = false;
+    let shieldTimer = 0;
+    let magnetActive = false;
+    let magnetTimer = 0;
+    let slowMoActive = false;
+    let slowMoTimer = 0;
+    let damageFlash = 0;
+    let invulnerableTimer = 0; // NEW: Invulnerability timer
+
+    const BURAK_SPRITE_SIZE = 120;
+    const BERNA_SPRITE_SIZE = 100;
+    const BURAK_CATCH_W = 100;
+
+    // ---- WAVE SYSTEM (Relationship stages) ----
+    const WAVES = [
+        { name: "Tanışma 💫", scoreTarget: 100, spawnRate: 0.025, speedMul: 1.0, brokenWeight: 0, wind: 0, wobble: false, desc: "İlk bakışta her şey güzel..." },
+        { name: "İlk Buluşma 🌹", scoreTarget: 250, spawnRate: 0.03, speedMul: 1.15, brokenWeight: 5, wind: 0.2, wobble: false, desc: "Kelebekler uçuşuyor!" },
+        { name: "Zorluklar 🌧️", scoreTarget: 450, spawnRate: 0.04, speedMul: 1.3, brokenWeight: 15, wind: 0.5, wobble: true, desc: "Her ilişkinin zorlukları var..." },
+        { name: "Güçlü Aşk 💪", scoreTarget: 700, spawnRate: 0.045, speedMul: 1.45, brokenWeight: 20, wind: -0.3, wobble: true, desc: "Zorluklar sizi güçlendirdi!" },
+        { name: "Fırtınalar ⛈️", scoreTarget: 1000, spawnRate: 0.055, speedMul: 1.6, brokenWeight: 28, wind: 0.8, wobble: false, desc: "En zor anlar... Pes etmeyin!" },
+        { name: "Sadakat 🤝", scoreTarget: 1400, spawnRate: 0.05, speedMul: 1.5, brokenWeight: 18, wind: 0.3, wobble: true, desc: "Birbirinize güvenin." },
+        { name: "Sonsuza Dek ♾️", scoreTarget: Infinity, spawnRate: 0.06, speedMul: 1.7, brokenWeight: 25, wind: 0, wobble: false, desc: "Aşk sonsuza kadar!" },
+    ];
+
+    // Heart types
+    function getHeartTypes(wave) {
+        const brokenW = WAVES[Math.min(wave - 1, WAVES.length - 1)].brokenWeight;
+        return [
+            { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 },
+            { emoji: '💖', points: 25, size: 32, speed: 2.0, weight: 20 },
+            { emoji: '💎', points: 50, size: 26, speed: 3.5, weight: 8 },
+            { emoji: '💔', points: -1, size: 28, speed: 3.0, weight: brokenW, isBroken: true },
+        ];
+    }
+
+    // Power-up types
+    const POWERUP_TYPES = [
+        { emoji: '🛡️', type: 'shield', size: 35, speed: 1.5, duration: 8 },
+        { emoji: '🧲', type: 'magnet', size: 35, speed: 1.5, duration: 8 },
+        { emoji: '⏳', type: 'slowmo', size: 35, speed: 1.5, duration: 6 },
+    ];
+
+    const GAME_OVER_MESSAGES = [
+        "Aşkınız puanlardan büyük! 💖",
+        "Her düşüş yeni bir başlangıçtır! 🌹",
+        "Her kalp sizin için atıyor! 💗",
+        "Berna & Burak, sonsuza dek! ♾️",
+        "Sevginiz yıldızlardan parlak! ✨",
+        "Birlikte her şey daha güzel! 💑",
+        "Aşk asla pes etmez! 💪",
+        "Zorluklar sizi güçlendirdi! 🌈"
+    ];
+
+    // ---- EASTER EGG: Triple-click heart ----
+    let easterEggClicks = 0;
+    let easterEggTimer = null;
+
+    if (heartEasterEgg) {
+        heartEasterEgg.addEventListener('click', (e) => {
+            if (state !== 'MAIN') return;
+            e.stopPropagation();
+
+            easterEggClicks++;
+
+            if (easterEggClicks === 1) {
+                easterEggTimer = setTimeout(() => { easterEggClicks = 0; }, 800);
+            }
+
+            if (easterEggClicks >= 3) {
+                clearTimeout(easterEggTimer);
+                easterEggClicks = 0;
+
+                // Flash the heart before opening game
+                heartEasterEgg.style.transition = 'transform 0.3s';
+                heartEasterEgg.style.transform = 'scale(1.5) rotate(15deg)';
+                setTimeout(() => {
+                    heartEasterEgg.style.transform = '';
+                    startGame();
+                }, 400);
+            }
+        });
+    }
+
+    function resizeGameCanvas() {
+        if (!gameCanvas) return;
+        const rect = gameCanvas.parentElement.getBoundingClientRect();
+        const hudHeight = document.querySelector('.game-hud')?.offsetHeight || 60;
+        gameW = Math.min(rect.width, 600);
+        gameH = rect.height - hudHeight - 20;
+        gameCanvas.width = gameW;
+        gameCanvas.height = gameH;
+    }
+
+    // ----------------------------
+    // Background Stars
+    // ----------------------------
+    function initGameStars() {
+        gameStars = [];
+        for (let i = 0; i < 60; i++) {
+            gameStars.push({
+                x: Math.random() * gameW,
+                y: Math.random() * gameH,
+                size: Math.random() * 2 + 0.5,
+                alpha: Math.random() * 0.5 + 0.3,
+                twinkleSpeed: Math.random() * 0.03 + 0.01
+            });
+        }
+    }
+
+    function drawGameStars() {
+        if (!gameCtx) return;
+        gameStars.forEach(s => {
+            const alpha = s.alpha + Math.sin(gameTime * s.twinkleSpeed * 60) * 0.2;
+            gameCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+            gameCtx.fillStyle = '#ffffff';
+            gameCtx.beginPath();
+            gameCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            gameCtx.fill();
+        });
+        gameCtx.globalAlpha = 1;
+    }
+
+    // ----------------------------
+    // Catch Effect
+    // ----------------------------
+    function addCatchEffect(x, y, points, isGood) {
+        const particleCount = isGood ? 10 : 6;
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 / particleCount) * i;
+            catchEffects.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * (2 + Math.random() * 3),
+                vy: Math.sin(angle) * (2 + Math.random() * 3),
+                life: 1,
+                color: isGood ? `hsl(${340 + Math.random() * 30}, 100%, 65%)` : '#ff4444',
+                size: Math.random() * 3 + 2
+            });
+        }
+        // Score popup
+        let text = '';
+        if (typeof points === 'string') text = points;
+        else text = (points > 0 ? '+' : '') + points;
+
+        catchEffects.push({
+            x: x, y: y - 15, vx: 0, vy: -2.5, life: 1,
+            text: text, isText: true,
+            color: isGood ? '#ff6b88' : '#ff4444',
+            size: isGood ? 20 : 18
+        });
+    }
+
+    // ----------------------------
+    // Wave Management
+    // ----------------------------
+    function getCurrentWaveConfig() {
+        return WAVES[Math.min(currentWave - 1, WAVES.length - 1)];
+    }
+
+    function showWaveBanner(text, subtitle) {
+        if (!waveBanner) return;
+        waveTransitioning = true;
+        waveBanner.innerHTML = text + (subtitle ? '<br><span style="font-size:0.5em;font-family:Montserrat;opacity:0.7">' + subtitle + '</span>' : '');
+        waveBanner.classList.add('active');
+        setTimeout(() => {
+            waveBanner.classList.remove('active');
+            setTimeout(() => { waveTransitioning = false; }, 500);
+        }, 2500);
+    }
+
+    function checkWaveProgress() {
+        const config = getCurrentWaveConfig();
+        if (gameScore >= config.scoreTarget && currentWave < WAVES.length) {
+            currentWave++;
+            if (gameWaveEl) gameWaveEl.textContent = currentWave;
+            const newConfig = getCurrentWaveConfig();
+            showWaveBanner(newConfig.name, newConfig.desc);
+        }
+    }
+
+    // ----------------------------
+    // Damage & Lives
+    // ----------------------------
+    function takeDamage() {
+        if (shieldActive) {
+            shieldActive = false;
+            shieldTimer = 0;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ Kırıldı!', false);
+            return;
+        }
+
+        if (invulnerableTimer > 0) return; // Ignore damage if invulnerable
+
+        gameLives--;
+        damageFlash = 1;
+        invulnerableTimer = 2.0; // 2 seconds invulnerability
+        updateLivesDisplay();
+
+        // Screen shake
+        if (gameOverlay) {
+            gameOverlay.classList.add('shake');
+            setTimeout(() => gameOverlay.classList.remove('shake'), 400);
+        }
+
+        if (gameLives <= 0) {
+            endGame();
+        }
+    }
+
+    function updateLivesDisplay() {
+        if (!gameLivesEl) return;
+        let hearts = '';
+        for (let i = 0; i < 3; i++) {
+            hearts += i < gameLives ? '❤️' : '🖤';
+        }
+        gameLivesEl.textContent = hearts;
+    }
+
+    // ----------------------------
+    // Power-up activation
+    // ----------------------------
+    function activatePowerUp(type) {
+        if (type === 'shield') {
+            shieldActive = true;
+            shieldTimer = 5;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ Kalkan!', true);
+        } else if (type === 'magnet') {
+            magnetActive = true;
+            magnetTimer = 4;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🧲 Mıknatıs!', true);
+        } else if (type === 'slowmo') {
+            slowMoActive = true;
+            slowMoTimer = 4;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '⏳ Yavaşla!', true);
+        }
+    }
+
+    // ----------------------------
+    // Game Loop
+    // ----------------------------
+    function gameLoop() {
+        if (!gameActive || !gameCtx) return;
+        const dt = slowMoActive ? 0.008 : 0.016;
+        gameTime += dt;
+        gameFrameCount++;
+
+        const config = getCurrentWaveConfig();
+        const speedMul = config.speedMul * (slowMoActive ? 0.4 : 1);
+
+        gameCtx.clearRect(0, 0, gameW, gameH);
+
+        // Damage flash overlay
+        if (damageFlash > 0) {
+            damageFlash -= 0.03;
+            gameCtx.fillStyle = `rgba(255, 0, 0, ${damageFlash * 0.3})`;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        }
+
+        drawGameStars();
+
+        // Wave-specific background tint
+        if (currentWave >= 3 && currentWave <= 5) {
+            const stormIntensity = (currentWave - 2) * 0.03;
+            gameCtx.fillStyle = `rgba(20, 0, 40, ${stormIntensity})`;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+
+            if (Math.random() < 0.003 * (currentWave - 2)) {
+                gameCtx.fillStyle = 'rgba(200, 200, 255, 0.1)';
+                gameCtx.fillRect(0, 0, gameW, gameH);
+            }
+        }
+
+        // Move Berna
+        const bernaSpeed = 1.0 + (currentWave - 1) * 0.3;
+        bernaX += bernaDir * bernaSpeed;
+        if (bernaX > gameW - BERNA_SPRITE_SIZE / 2) bernaDir = -1;
+        if (bernaX < BERNA_SPRITE_SIZE / 2) bernaDir = 1;
+
+        // Apply DOM transforms for Berna (GIF support + Performance)
+        if (bernaEl) {
+            // 1. Floating bounce
+            const floatOffset = Math.sin(gameTime * 2) * 8;
+            const bernaY = 20 + floatOffset;
+
+            // 2. Perspective tilt
+            const rotationAngle = bernaDir * 5; // degrees
+
+            // 3. Perspective scaling
+            const scaleVariation = 1.0 + Math.sin(gameTime * 1.5) * 0.05;
+            const scaleX = (bernaDir === -1 ? -1 : 1) * scaleVariation;
+
+            // Apply transform
+            bernaEl.style.transform = `translate3d(${bernaX - 50}px, ${bernaY}px, 0) rotate(${rotationAngle}deg) scale(${scaleX}, ${scaleVariation})`;
+            bernaEl.style.filter = `drop-shadow(${-bernaDir * 5}px 10px 10px rgba(0,0,0,0.4))`;
+        }
+
+        /* 
+           CANVAS DRAWING REMOVED FOR PERFORMANCE AND GIF SUPPORT
+           (Previous code for drawImage(bernaImg) deleted)
+        */
+
+        // Spawn hearts from Berna
+        if (!waveTransitioning && Math.random() < config.spawnRate) {
+            const heartTypes = getHeartTypes(currentWave);
+            const totalWeight = heartTypes.reduce((s, t) => s + t.weight, 0);
+            let r = Math.random() * totalWeight;
+            let type = heartTypes[0];
+            for (const t of heartTypes) {
+                r -= t.weight;
+                if (r <= 0) { type = t; break; }
+            }
+
+            fallingHearts.push({
+                x: bernaX + (Math.random() - 0.5) * 40,
+                y: 20 + BERNA_SPRITE_SIZE,
+                vy: type.speed * speedMul * (0.8 + Math.random() * 0.4),
+                vx: (Math.random() - 0.5) * 0.8,
+                type: type,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.05
+            });
+        }
+
+        // Spawn power-ups (rare)
+        if (!waveTransitioning && Math.random() < 0.003 && gamePowerUps.length < 1) {
+            const pu = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+            gamePowerUps.push({
+                x: Math.random() * (gameW - 80) + 40,
+                y: -30,
+                vy: pu.speed,
+                type: pu,
+                rotation: 0,
+                glow: 0
+            });
+        }
+
+        // Update & draw falling hearts
+        const burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        for (let i = fallingHearts.length - 1; i >= 0; i--) {
+            const h = fallingHearts[i];
+
+            // Wind & Wobble effects
+            if (config.wind) {
+                h.x += config.wind;
+            }
+            if (config.wobble) {
+                h.x += Math.sin(gameTime * 5 + i) * 1.0;
+            }
+
+            // Magnet effect (attract good hearts)
+            if (magnetActive && !h.type.isBroken) {
+                const dx = burakX - h.x;
+                const dy = burakTop - h.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 150) {
+                    h.vx += (dx / dist) * 0.8;
+                    h.vy += (dy / dist) * 0.3;
+                }
+            }
+
+            h.y += h.vy;
+            h.x += h.vx + Math.sin(gameTime * 2 + i) * 0.3;
+            h.x = Math.max(15, Math.min(gameW - 15, h.x));
+            h.rotation += h.rotSpeed;
+
+            // Catch check
+            if (h.y > burakTop - 40 && h.y < burakTop + 60 && // Widened collision
+                Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
+
+                if (h.type.isBroken) {
+                    if (invulnerableTimer > 0) {
+                        // Invulnerable - no damage
+                        addCatchEffect(h.x, burakTop, '🛡️', false);
+                    } else {
+                        // Take damage
+                        takeDamage();
+                        addCatchEffect(h.x, burakTop, '-💔', false);
+                        gameConsecutiveCatches = 0;
+                        gameCombo = 1;
+                    }
+                } else {
+                    gameConsecutiveCatches++;
+                    if (gameConsecutiveCatches >= 8) gameCombo = 4;
+                    else if (gameConsecutiveCatches >= 5) gameCombo = 3;
+                    else if (gameConsecutiveCatches >= 3) gameCombo = 2;
+                    else gameCombo = 1;
+
+                    const earned = h.type.points * gameCombo;
+                    gameScore += earned;
+                    if (gameScoreEl) gameScoreEl.textContent = gameScore;
+                    addCatchEffect(h.x, burakTop, earned, true);
+                    checkWaveProgress();
+                }
+
+                if (gameComboEl) gameComboEl.textContent = 'x' + gameCombo;
+                fallingHearts.splice(i, 1);
+                continue;
+            }
+
+            // Missed hearts - REMOVED LIFE PENALTY for better experience
+            if (h.y > gameH + 20) {
+                if (!h.type.isBroken) {
+                    gameConsecutiveCatches = 0;
+                    gameCombo = 1;
+                    if (gameComboEl) gameComboEl.textContent = 'x1';
+                    // User complained about difficulty, so removing random damage on miss
+                }
+                fallingHearts.splice(i, 1);
+                continue;
+            }
+
+            // Draw heart (Optimized: Removed shadows for performance)
+            gameCtx.save();
+            gameCtx.translate(h.x, h.y);
+            gameCtx.rotate(h.rotation);
+            gameCtx.font = `${h.type.size}px serif`;
+            gameCtx.textAlign = 'center';
+            gameCtx.textBaseline = 'middle';
+
+            /* 
+               PERFORMANCE OPTIMIZATION: 
+               Removed gameCtx.shadowBlur checks. 
+               This fixes the FPS drop and transparency issues.
+            */
+
+            gameCtx.fillText(h.type.emoji, 0, 0);
+            gameCtx.restore();
+        }
+
+        // Update & draw power-ups (Optimized: Removed shadows)
+        for (let i = gamePowerUps.length - 1; i >= 0; i--) {
+            const pu = gamePowerUps[i];
+            pu.y += pu.vy;
+            pu.glow = Math.sin(gameTime * 5) * 0.3 + 0.7;
+
+            // Power-up collision (Widened range)
+            if (pu.y > burakTop - 50 && pu.y < burakTop + 60 &&
+                Math.abs(pu.x - burakX) < BURAK_CATCH_W / 2 + 30) {
+                activatePowerUp(pu.type.type);
+                gamePowerUps.splice(i, 1);
+                continue;
+            }
+
+            if (pu.y > gameH + 30) {
+                gamePowerUps.splice(i, 1);
+                continue;
+            }
+
+            gameCtx.save();
+            gameCtx.translate(pu.x, pu.y);
+            // Removed expensive shadowBlur
+            gameCtx.globalAlpha = pu.glow;
+            gameCtx.font = `${pu.type.size}px serif`;
+            gameCtx.textAlign = 'center';
+            gameCtx.textBaseline = 'middle';
+            gameCtx.fillText(pu.type.emoji, 0, 0);
+            gameCtx.globalAlpha = 1;
+            gameCtx.restore();
+        }
+
+        // Update timers
+        if (invulnerableTimer > 0) {
+            invulnerableTimer -= dt;
+        }
+        if (shieldActive) {
+            shieldTimer -= dt;
+            if (shieldTimer <= 0) { shieldActive = false; }
+        }
+        if (magnetActive) {
+            magnetTimer -= dt;
+            if (magnetTimer <= 0) { magnetActive = false; }
+        }
+        if (slowMoActive) {
+            slowMoTimer -= dt * 2;
+            if (slowMoTimer <= 0) { slowMoActive = false; }
+        }
+
+        // Draw Burak (DOM Transform + Canvas Effects)
+
+        // 1. Draw effects on Canvas (behind/around the DOM element)
+        gameCtx.save();
+
+        // Flashing effect when invulnerable (Canvas only affects what we draw here, not DOM)
+        // For DOM transparency, we need to set opacity on the element
+        if (invulnerableTimer > 0 && Math.floor(gameTime * 10) % 2 === 0) {
+            if (burakEl) burakEl.style.opacity = 0.5;
+        } else {
+            if (burakEl) burakEl.style.opacity = 1.0;
+        }
+
+        // Shield effect (Canvas)
+        if (shieldActive) {
+            gameCtx.strokeStyle = `rgba(100, 200, 255, ${0.4 + Math.sin(gameTime * 6) * 0.2})`;
+            gameCtx.lineWidth = 3;
+            gameCtx.beginPath();
+            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 10, 0, Math.PI * 2);
+            gameCtx.stroke();
+        }
+
+        // Magnet aura (Canvas)
+        if (magnetActive) {
+            gameCtx.strokeStyle = `rgba(255, 180, 50, ${0.3 + Math.sin(gameTime * 8) * 0.2})`;
+            gameCtx.lineWidth = 2;
+            gameCtx.setLineDash([5, 5]);
+            gameCtx.beginPath();
+            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 20, 0, Math.PI * 2);
+            gameCtx.stroke();
+            gameCtx.setLineDash([]);
+        }
+
+        gameCtx.restore();
+
+        // 2. Update DOM Position for GIF
+        if (burakEl) {
+            // Calculate movement tilt
+            const burakVel = burakX - (window.lastBurakX || burakX);
+            window.lastBurakX = burakX;
+            const tiltAngle = Math.max(-10, Math.min(10, burakVel * 0.5)); // degrees
+
+            // Breathing
+            const breatheScale = 1.0 + Math.sin(gameTime * 3) * 0.02;
+
+            // Catch reaction
+            const excitement = Math.min(0.2, gameCombo * 0.02);
+            const jumpOffset = Math.abs(Math.sin(gameTime * 10)) * (excitement * 20);
+
+            // Apply transform
+            // Note: Burak is positioned bottom:20px. We translate X. And Y for jump.
+            // We need to subtract half width (50px) to center it on burakX
+            burakEl.style.transform = `translate3d(${burakX - 50}px, ${-jumpOffset}px, 0) rotate(${tiltAngle}deg) scale(${breatheScale}, ${breatheScale + excitement})`;
+
+            // Dynamic drop shadow via CSS filter
+            burakEl.style.filter = `drop-shadow(0 15px 10px rgba(0,0,0,0.5))`;
+        }
+
+        /* 
+           CANVAS DRAWING OF BURAK REMOVED
+           (Previous drawImage(burakImg) code deleted)
+        */
+
+        // Draw catch effects
+        for (let i = catchEffects.length - 1; i >= 0; i--) {
+            const e = catchEffects[i];
+            e.x += e.vx;
+            e.y += e.vy;
+            e.life -= 0.025;
+
+            if (e.life <= 0) { catchEffects.splice(i, 1); continue; }
+
+            gameCtx.globalAlpha = e.life;
+            if (e.isText) {
+                gameCtx.font = `bold ${e.size}px Montserrat, sans-serif`;
+                gameCtx.fillStyle = e.color;
+                gameCtx.textAlign = 'center';
+                gameCtx.fillText(e.text, e.x, e.y);
+            } else {
+                gameCtx.fillStyle = e.color;
+                gameCtx.beginPath();
+                gameCtx.arc(e.x, e.y, e.size * e.life, 0, Math.PI * 2);
+                gameCtx.fill();
+            }
+            gameCtx.globalAlpha = 1;
+        }
+
+        // Ground line
+        gameCtx.fillStyle = 'rgba(255, 77, 109, 0.15)';
+        gameCtx.fillRect(0, gameH - 5, gameW, 5);
+
+        // Active power-up indicators
+        if (shieldActive || magnetActive || slowMoActive) {
+            let indicators = [];
+            if (shieldActive) indicators.push('🛡️ ' + Math.ceil(shieldTimer) + 's');
+            if (magnetActive) indicators.push('🧲 ' + Math.ceil(magnetTimer) + 's');
+            if (slowMoActive) indicators.push('⏳ ' + Math.ceil(slowMoTimer) + 's');
+            gameCtx.font = '14px Montserrat, sans-serif';
+            gameCtx.fillStyle = '#ffe5ec';
+            gameCtx.textAlign = 'center';
+            gameCtx.globalAlpha = 0.8;
+            gameCtx.fillText(indicators.join('  '), gameW / 2, gameH - 12);
+            gameCtx.globalAlpha = 1;
+        }
+
+        gameAnimFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // ----------------------------
+    // Game Controls
+    // ----------------------------
+    function handleGamePointerMove(e) {
+        if (!gameActive) return;
+        e.preventDefault();
+        const rect = gameCanvas.getBoundingClientRect();
+        let clientX;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+        } else {
+            clientX = e.clientX;
+        }
+        burakX = Math.max(BURAK_SPRITE_SIZE / 2, Math.min(gameW - BURAK_SPRITE_SIZE / 2, clientX - rect.left));
+    }
+
+    if (gameCanvas) {
+        gameCanvas.addEventListener('mousemove', handleGamePointerMove);
+        gameCanvas.addEventListener('touchmove', handleGamePointerMove, { passive: false });
+        gameCanvas.addEventListener('touchstart', (e) => {
+            if (!gameActive) return;
+            e.preventDefault();
+            handleGamePointerMove(e);
+        }, { passive: false });
+    }
+
+    // ----------------------------
+    // Start / End / Close Game
+    // ----------------------------
+    function startGame() {
+        gameActive = true;
+        gameScore = 0;
+        gameLives = 3;
+        gameCombo = 1;
+        gameConsecutiveCatches = 0;
+        currentWave = 1;
+        fallingHearts = [];
+        catchEffects = [];
+        gamePowerUps = [];
+        gameTime = 0;
+        gameFrameCount = 0;
+        damageFlash = 0;
+        invulnerableTimer = 0;
+        shieldActive = false;
+        magnetActive = false;
+        slowMoActive = false;
+        bernaX = 0;
+        bernaDir = 1;
+
+        if (gameScoreEl) gameScoreEl.textContent = '0';
+        if (gameWaveEl) gameWaveEl.textContent = '1';
+        if (gameComboEl) gameComboEl.textContent = 'x1';
+        updateLivesDisplay();
+        if (gameOverScreen) gameOverScreen.classList.remove('active');
+
+        if (gameOverlay) gameOverlay.classList.add('active');
+
+        // Wait for display change to apply before calculating width
+        requestAnimationFrame(() => {
+            resizeGameCanvas();
+            burakX = gameW / 2;
+            bernaX = gameW / 2;
+            initGameStars();
+        });
+
+        setTimeout(() => {
+            showWaveBanner(WAVES[0].name, WAVES[0].desc);
+        }, 300);
+
+        cancelAnimationFrame(gameAnimFrame);
+        gameLoop();
+    }
+
+    function endGame() {
+        gameActive = false;
+        cancelAnimationFrame(gameAnimFrame);
+
+        if (finalScoreEl) finalScoreEl.textContent = gameScore;
+        if (finalWaveEl) finalWaveEl.textContent = currentWave;
+        if (gameOverMsgEl) gameOverMsgEl.textContent = GAME_OVER_MESSAGES[Math.floor(Math.random() * GAME_OVER_MESSAGES.length)];
+
+        if (gameOverTitle) {
+            if (currentWave >= 7) {
+                gameOverTitle.textContent = '♾️ Sonsuza Dek!';
+            } else if (currentWave >= 5) {
+                gameOverTitle.textContent = '💪 Harika Mücadele!';
+            } else if (currentWave >= 3) {
+                gameOverTitle.textContent = '💫 İyi Deneme!';
+            } else {
+                gameOverTitle.textContent = '💔 Oyun Bitti!';
+            }
+        }
+
+        if (gameOverScreen) gameOverScreen.classList.add('active');
+    }
+
+    function closeGame() {
+        gameActive = false;
+        cancelAnimationFrame(gameAnimFrame);
+        if (gameOverlay) gameOverlay.classList.remove('active');
+        if (gameOverScreen) gameOverScreen.classList.remove('active');
+    }
+
+    // ----------------------------
+    // Event Listeners
+    // ----------------------------
+    if (gameCloseBtn) {
+        gameCloseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeGame();
+        });
+    }
+
+    if (gameRestartBtn) {
+        gameRestartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+    }
+
+    if (gameQuitBtn) {
+        gameQuitBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeGame();
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        if (gameOverlay && gameOverlay.classList.contains('active')) {
+            resizeGameCanvas();
+            initGameStars();
+        }
+    });
 
 });

@@ -42,7 +42,7 @@
 
         <div class="card-container" data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-glare
             data-tilt-max-glare="0.5">
-            <div class="heart-container">
+            <div class="heart-container" id="heart-easter-egg">
                 <!-- SVG Heart with Gradient -->
                 <svg class="heart-svg" viewBox="0 0 32 29.6">
                     <defs>
@@ -55,6 +55,7 @@
                     <path fill="url(#heartGrad)" d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
                     c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z" />
                 </svg>
+                <span class="easter-egg-hint" id="easter-egg-hint">🎮</span>
                 <!-- Glow rings -->
                 <div class="heart-ring heart-ring-1"></div>
                 <div class="heart-ring heart-ring-2"></div>
@@ -80,6 +81,48 @@
     </div>
 
 
+
+    <!-- GAME OVERLAY -->
+    <div id="game-overlay" class="game-overlay">
+        <button id="game-close" class="game-close-btn">✕</button>
+        <div class="game-hud">
+            <div class="game-hud-item">
+                <span class="hud-label">CAN</span>
+                <span class="hud-value" id="game-lives">❤️❤️❤️</span>
+            </div>
+            <div class="game-hud-item">
+                <span class="hud-label">SKOR</span>
+                <span class="hud-value" id="game-score">0</span>
+            </div>
+            <div class="game-hud-item">
+                <span class="hud-label">BÖLÜM</span>
+                <span class="hud-value" id="game-wave">1</span>
+            </div>
+            <div class="game-hud-item">
+                <span class="hud-label">KOMBO</span>
+                <span class="hud-value" id="game-combo">x1</span>
+            </div>
+        </div>
+        <div class="game-wave-banner" id="game-wave-banner"></div>
+
+        <!-- Character GIFs (DOM-based for performance & animation) -->
+        <div id="game-characters" class="game-characters">
+            <img id="berna-char" src="berna.gif" alt="Berna" class="game-char berna-char">
+            <img id="burak-char" src="burak.gif" alt="Burak" class="game-char burak-char">
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+        <div id="game-over-screen" class="game-over-screen">
+            <h2 class="game-over-title" id="game-over-title">💔 Oyun Bitti!</h2>
+            <p class="game-over-score">Skorunuz: <span id="final-score">0</span></p>
+            <p class="game-over-wave">Ulaşılan Bölüm: <span id="final-wave">1</span></p>
+            <p class="game-over-message" id="game-over-msg"></p>
+            <div class="game-over-buttons">
+                <button id="game-restart" class="game-btn game-btn-primary">🔄 Tekrar Oyna</button>
+                <button id="game-quit" class="game-btn game-btn-secondary">❌ Kapat</button>
+            </div>
+        </div>
+    </div>
 
     <!-- LOVE NOTE MODAL -->
     <div id="love-modal" class="modal-overlay">
