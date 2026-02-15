@@ -1726,12 +1726,18 @@
 
             if (Math.random() < bossAttackChance || isBurst) {
                 for (let i = 0; i < dropCount; i++) {
+                    let heartType = { emoji: '💔', points: -1, size: 28, isBroken: true };
+
+                    if (loveBlastActive) {
+                        heartType = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
+                    }
+
                     fallingHearts.push({
                         x: bossX + (Math.random() - 0.5) * (isBurst ? 150 : 30),
                         y: renderBossY + 40,
                         vy: 2.8 + (currentWave * 0.2),
                         vx: (Math.random() - 0.5) * 0.6,
-                        type: { emoji: '💔', points: -1, size: 28, isBroken: true },
+                        type: heartType,
                         rotation: Math.random() * Math.PI * 2,
                         rotSpeed: 0.1
                     });
