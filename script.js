@@ -894,13 +894,13 @@
 
     // ---- WAVE SYSTEM (Relationship stages) ----
     const WAVES = [
-        { name: "Tanışma 💫", scoreTarget: 100, spawnRate: 0.025, speedMul: 1.0, brokenWeight: 0, wind: 0, wobble: false, desc: "İlk bakışta her şey güzel..." },
-        { name: "İlk Buluşma 🌹", scoreTarget: 250, spawnRate: 0.03, speedMul: 1.15, brokenWeight: 5, wind: 0.2, wobble: false, desc: "Kelebekler uçuşuyor!" },
-        { name: "Zorluklar 🌧️", scoreTarget: 450, spawnRate: 0.04, speedMul: 1.3, brokenWeight: 15, wind: 0.5, wobble: true, desc: "Her ilişkinin zorlukları var..." },
-        { name: "Güçlü Aşk 💪", scoreTarget: 700, spawnRate: 0.045, speedMul: 1.45, brokenWeight: 20, wind: -0.3, wobble: true, desc: "Zorluklar sizi güçlendirdi!" },
-        { name: "Fırtınalar ⛈️", scoreTarget: 1000, spawnRate: 0.055, speedMul: 1.6, brokenWeight: 28, wind: 0.8, wobble: false, desc: "En zor anlar... Pes etmeyin!" },
-        { name: "Sadakat 🤝", scoreTarget: 1400, spawnRate: 0.05, speedMul: 1.5, brokenWeight: 18, wind: 0.3, wobble: true, desc: "Birbirinize güvenin." },
-        { name: "Sonsuza Dek ♾️", scoreTarget: Infinity, spawnRate: 0.06, speedMul: 1.7, brokenWeight: 25, wind: 0, wobble: false, desc: "Aşk sonsuza kadar!" },
+        { name: "Tanışma 💫", scoreTarget: 300, spawnRate: 0.025, speedMul: 1.0, brokenWeight: 0, wind: 0, wobble: false, bgEffect: 'none', desc: "İlk bakışta her şey güzel..." },
+        { name: "İlk Buluşma 🌹", scoreTarget: 750, spawnRate: 0.03, speedMul: 1.15, brokenWeight: 5, wind: 0.2, wobble: false, bgEffect: 'pink_glow', desc: "Kelebekler uçuşuyor!" },
+        { name: "Zorluklar 🌧️", scoreTarget: 1500, spawnRate: 0.04, speedMul: 1.3, brokenWeight: 15, wind: 0.5, wobble: true, bgEffect: 'rain', desc: "Her ilişkinin zorlukları var..." },
+        { name: "Güçlü Aşk 💪", scoreTarget: 2500, spawnRate: 0.045, speedMul: 1.45, brokenWeight: 20, wind: -0.3, wobble: true, bgEffect: 'gold_rays', desc: "Zorluklar sizi güçlendirdi!" },
+        { name: "Fırtınalar ⛈️", scoreTarget: 4000, spawnRate: 0.055, speedMul: 1.6, brokenWeight: 28, wind: 0.8, wobble: false, bgEffect: 'storm', desc: "En zor anlar... Pes etmeyin!" },
+        { name: "Sadakat 🤝", scoreTarget: 6000, spawnRate: 0.05, speedMul: 1.5, brokenWeight: 18, wind: 0.3, wobble: true, bgEffect: 'aurora', desc: "Birbirinize güvenin." },
+        { name: "Sonsuza Dek ♾️", scoreTarget: Infinity, spawnRate: 0.065, speedMul: 1.8, brokenWeight: 25, wind: 0, wobble: false, bgEffect: 'cosmos', desc: "Aşk sonsuza kadar!" },
     ];
 
     // Heart types
@@ -1138,16 +1138,86 @@
 
         drawGameStars();
 
-        // Wave-specific background tint
-        if (currentWave >= 3 && currentWave <= 5) {
-            const stormIntensity = (currentWave - 2) * 0.03;
-            gameCtx.fillStyle = `rgba(20, 0, 40, ${stormIntensity})`;
+        // Background Effects Render
+        // Ensure alpha is reset first
+        gameCtx.globalAlpha = 1;
+
+        const effect = config.bgEffect;
+        const centerX = gameW / 2;
+        const centerY = gameH / 2;
+
+        if (effect === 'pink_glow') {
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.2, centerX, centerY, gameW * 0.8);
+            gradient.addColorStop(0, 'rgba(255, 100, 150, 0.0)');
+            gradient.addColorStop(1, 'rgba(255, 100, 150, 0.2)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        } else if (effect === 'rain') {
+            // Rainy Vignette (Blue/Gray)
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.2, centerX, centerY, gameW * 0.9);
+            gradient.addColorStop(0, 'rgba(100, 120, 140, 0.0)');
+            gradient.addColorStop(1, 'rgba(80, 100, 130, 0.25)'); // Darker edge
+            gameCtx.fillStyle = gradient;
             gameCtx.fillRect(0, 0, gameW, gameH);
 
-            if (Math.random() < 0.003 * (currentWave - 2)) {
-                gameCtx.fillStyle = 'rgba(200, 200, 255, 0.1)';
+            // Stronger rain
+            gameCtx.strokeStyle = 'rgba(180, 190, 220, 0.5)';
+            gameCtx.lineWidth = 1.5;
+            gameCtx.beginPath();
+            for (let i = 0; i < 15; i++) {
+                const rx = Math.random() * gameW;
+                const ry = Math.random() * gameH;
+                gameCtx.moveTo(rx, ry);
+                gameCtx.lineTo(rx - 8, ry + 25);
+            }
+            gameCtx.stroke();
+        } else if (effect === 'gold_rays') {
+            // Golden Vignette
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.1, centerX, centerY, gameW * 0.8);
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.0)');
+            gradient.addColorStop(1, 'rgba(255, 180, 0, 0.15)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+
+            // Rays
+            gameCtx.save();
+            gameCtx.translate(centerX, centerY);
+            gameCtx.rotate(gameTime * 0.2);
+            gameCtx.fillStyle = 'rgba(255, 225, 100, 0.08)'; // Brighter rays
+            for (let i = 0; i < 8; i++) {
+                gameCtx.rotate(Math.PI / 4);
+                gameCtx.fillRect(-gameW, -30, gameW * 2, 60);
+            }
+            gameCtx.restore();
+        } else if (effect === 'storm') {
+            // Stormy Vignette (Dark Purple/Blue)
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.1, centerX, centerY, gameW * 1.0);
+            gradient.addColorStop(0, 'rgba(30, 10, 50, 0.0)');
+            gradient.addColorStop(1, 'rgba(20, 0, 40, 0.4)'); // Strong dark edge
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+
+            if (Math.random() < 0.04) { // More frequent lightning
+                gameCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
                 gameCtx.fillRect(0, 0, gameW, gameH);
             }
+        } else if (effect === 'aurora') {
+            // Aurora Vignette
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, gameW);
+            gradient.addColorStop(0, `hsla(${200 + Math.sin(gameTime) * 20}, 70%, 50%, 0.05)`);
+            gradient.addColorStop(1, `hsla(${280 + Math.cos(gameTime) * 20}, 70%, 30%, 0.25)`);
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        } else if (effect === 'cosmos') {
+            // Deep Cosmic Vignette
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.2, centerX, centerY, gameW);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0.0)');
+            gradient.addColorStop(1, 'rgba(50, 0, 80, 0.3)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+
+            gameCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.1})`;
+            gameCtx.fillRect(0, 0, gameW, gameH);
         }
 
         // Move Berna
