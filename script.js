@@ -1851,7 +1851,7 @@
                         gameCombo = 1;
 
                         // Berna gets angry!
-                        bernaAngryTimer = 0.5; // 0.5 seconds of anger
+                        bernaAngryTimer = 1.5; // 1.5 seconds of anger
                         // Angry emoji burst above Berna
                         addCatchEffect(bernaX, 20, '💢', true);
                     }
