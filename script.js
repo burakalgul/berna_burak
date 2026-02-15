@@ -742,49 +742,77 @@ document.addEventListener('DOMContentLoaded', () => {
     // -----------------------------------------------------------------
     // MAIN INTERACTION (Fireworks & Envelopes)
     // -----------------------------------------------------------------
-    document.addEventListener('click', (e) => {
-        if (state === 'MAIN') {
-            // Check for Love Envelope Clicks
-            let clickedEnvelope = false;
-            // Reverse iterate to click top-most first
-            const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
 
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                if (p.type === 'love_envelope') {
-                    const dx = clickX - p.x;
-                    const dy = clickY - p.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Helper function to get canvas-relative coordinates
+    function getCanvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
 
-                    // Hitbox slightly larger than visual size
-                    if (dist < p.size * 2 + 20) {
-                        const reason = loveReasons[Math.floor(Math.random() * loveReasons.length)];
-                        noteText.textContent = reason;
-                        modal.classList.add('active');
+        // Handle touch or mouse event
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
 
-                        // Remove the clicked envelope
-                        particles.splice(i, 1);
-                        // Spawn a replacement immediately elsewhere
-                        particles.push(new Particle('love_envelope'));
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
 
-                        clickedEnvelope = true;
-                        break;
-                    }
+    // Unified interaction handler
+    function handleInteraction(e) {
+        if (state !== 'MAIN') return;
+
+        const coords = getCanvasCoords(e);
+        const clickX = coords.x;
+        const clickY = coords.y;
+
+        // Check for Love Envelope Clicks
+        let clickedEnvelope = false;
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            if (p.type === 'love_envelope') {
+                const dx = clickX - p.x;
+                const dy = clickY - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Hitbox slightly larger than visual size
+                if (dist < p.size * 2 + 20) {
+                    const reason = loveReasons[Math.floor(Math.random() * loveReasons.length)];
+                    noteText.textContent = reason;
+                    modal.classList.add('active');
+
+                    // Remove the clicked envelope
+                    particles.splice(i, 1);
+                    // Spawn a replacement immediately elsewhere
+                    particles.push(new Particle('love_envelope'));
+
+                    clickedEnvelope = true;
+                    break;
                 }
             }
-
-            if (clickedEnvelope) return; // Don't spawn firework if clicked envelope
-            if (e.target.closest('.card-container') || e.target.closest('.music-control') || e.target.closest('.note-card')) return;
-
-            const now = Date.now();
-            if (now - lastFireworkTime > 100) {
-                spawnFirework(e.clientX, e.clientY);
-                lastFireworkTime = now;
-            }
         }
-    });
+
+        if (clickedEnvelope) return; // Don't spawn firework if clicked envelope
+        if (e.target.closest('.card-container') || e.target.closest('.music-control') || e.target.closest('.note-card')) return;
+
+        const now = Date.now();
+        if (now - lastFireworkTime > 100) {
+            spawnFirework(clickX, clickY);
+            lastFireworkTime = now;
+        }
+    }
+
+    // Add both touch and click listeners
+    document.addEventListener('touchstart', handleInteraction, { passive: true });
+    document.addEventListener('click', handleInteraction);
 
     function spawnFirework(x, y) {
         if (particles.length > 500 && isMobile) return;
