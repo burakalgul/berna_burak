@@ -1750,9 +1750,15 @@
             let angryShakeRot = 0;
             if (bernaAngryTimer > 0) {
                 bernaAngryTimer -= dt;
-                const intensity = Math.min(1, bernaAngryTimer / 0.3);
-                angryShakeX = Math.sin(gameTime * 60) * 6 * intensity;
-                angryShakeRot = Math.sin(gameTime * 45) * 4 * intensity;
+                if (bernaAngryTimer <= 0) {
+                    bernaAngryTimer = 0;
+                    // Force-clear filter for iOS/mobile
+                    bernaEl.style.filter = 'none';
+                } else {
+                    const intensity = Math.min(1, bernaAngryTimer / 0.5);
+                    angryShakeX = Math.sin(gameTime * 60) * 6 * intensity;
+                    angryShakeRot = Math.sin(gameTime * 45) * 4 * intensity;
+                }
             }
 
             // Apply transform
