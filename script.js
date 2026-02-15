@@ -645,7 +645,47 @@ document.addEventListener('DOMContentLoaded', () => {
         "Sen benim en iyi arkadaşımsın.",
         "Ellerini tuttuğumda evimde hissediyorum.",
         "Her sabah seni düşünerek uyanıyorum.",
-        "Bana aşkın ne demek olduğunu öğrettin."
+        "Bana aşkın ne demek olduğunu öğrettin.",
+        "Birlikte saçmalamayı seviyorum.",
+        "Bana her zaman destek oluyorsun.",
+        "Seninle her anımız bir macera.",
+        "Kokun bana huzur veriyor.",
+        "Bana baktığında kendimi özel hissediyorum.",
+        "Seninle susmak bile çok güzel.",
+        "Benim için yaptığın küçük sürprizleri seviyorum.",
+        "Bana güveniyorsun ve ben de sana güveniyorum.",
+        "Seninle gelecek hayalleri kurmayı seviyorum.",
+        "Beni her zaman güldürmeyi başarıyorsun.",
+        "Zor zamanlarımda hep yanımda oldun.",
+        "Seninleyken kendimin en iyi versiyonu oluyorum.",
+        "Bana kattığın güzellikler için minnettarım.",
+        "Sadece varlığınla bile beni mutlu ediyorsun.",
+        "Seninle her şey daha anlamlı.",
+        "Gözlerin bana her şeyi anlatıyor.",
+        "Seninle geçirdiğim her saniye çok kıymetli.",
+        "Bana sarıldığında tüm dertlerim uçup gidiyor.",
+        "Seninle aynı şarkıları söylemeyi seviyorum.",
+        "Bana yemek yapmanı özlüyorum :)",
+        "Seninle film izlemek bile bir başka keyifli.",
+        "Bana öğrettiğin her şey için teşekkür ederim.",
+        "Seninle tartışsak bile hemen barışmamızı seviyorum.",
+        "Benim en büyük şansımsın.",
+        "Seni her halinle seviyorum.",
+        "Benim huzur limanımsın.",
+        "Seninle yaşlanmak istiyorum.",
+        "Her gün seni daha çok seviyorum.",
+        "Bana ilham veriyorsun.",
+        "Seninle her şey mümkün.",
+        "Hayatıma girdiğin için şükrediyorum.",
+        "Sen benim sonsuzumsun.",
+        "Birlikte kurduğumuz hayallerin peşinden koşuyoruz.",
+        "Seninle her yere gelirim.",
+        "Bana aşkla bakışını seviyorum.",
+        "Sen benim diğer yarımsın.",
+        "İyi ki varsın sevgilim.",
+        "Seni kelimelerin anlatamayacağı kadar çok seviyorum.",
+        "Seninle her gün sevgililer günü.",
+        "Benim biricik sevgilimsin."
     ];
 
     const modal = document.getElementById('love-modal');
@@ -707,11 +747,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check for Love Envelope Clicks
             let clickedEnvelope = false;
             // Reverse iterate to click top-most first
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 if (p.type === 'love_envelope') {
-                    const dx = e.clientX - p.x;
-                    const dy = e.clientY - p.y;
+                    const dx = clickX - p.x;
+                    const dy = clickY - p.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
                     // Hitbox slightly larger than visual size
