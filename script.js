@@ -774,6 +774,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickX = coords.x;
         const clickY = coords.y;
 
+        // DEBUG: Visual marker at touch position
+        if (isMobile) {
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.beginPath();
+            ctx.arc(clickX, clickY, 15, 0, Math.PI * 2);
+            ctx.fill();
+            console.log(`Touch: x=${clickX.toFixed(0)}, y=${clickY.toFixed(0)}`);
+        }
+
+
         // Check for Love Envelope Clicks
         let clickedEnvelope = false;
         for (let i = particles.length - 1; i >= 0; i--) {
