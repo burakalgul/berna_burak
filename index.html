@@ -3,8 +3,22 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Berna & Burak - Sevgililer Günü</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff4d6d">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Berna & Burak">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    
+    <!-- SEO & Social -->
+    <meta name="description" content="Romantik kalp yakalama oyunu - Berna ve Burak'ın aşk hikayesi">
+    <meta name="keywords" content="sevgililer günü, oyun, romantik, kalp, aşk">
+    
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -83,9 +97,169 @@
 
 
     <!-- GAME OVERLAY -->
-    <div id="game-overlay" class="game-overlay">
+    <div id="game-overlay" class="game-overlay hidden">
+        
+        <!-- MAIN MENU (Inside Game Overlay) -->
+        <div id="main-menu" class="main-menu">
+            <div class="menu-card">
+                <h1 class="menu-title">❤️ Berna & Burak ❤️</h1>
+                <p class="menu-subtitle">Kalp Yakalama Oyunu</p>
+                
+                <div class="menu-buttons">
+                    <button id="menu-play" class="menu-btn menu-btn-primary">
+                        <span class="btn-icon">🎮</span>
+                        <span class="btn-text">Oyuna Başla</span>
+                    </button>
+                    
+                    <button id="menu-stats" class="menu-btn menu-btn-secondary">
+                        <span class="btn-icon">📊</span>
+                        <span class="btn-text">İstatistikler</span>
+                    </button>
+                    
+                    <button id="menu-howto" class="menu-btn menu-btn-secondary">
+                        <span class="btn-icon">❓</span>
+                        <span class="btn-text">Nasıl Oynanır</span>
+                    </button>
+                    
+                    <button id="menu-settings" class="menu-btn menu-btn-secondary">
+                        <span class="btn-icon">⚙️</span>
+                        <span class="btn-text">Ayarlar</span>
+                    </button>
+                </div>
+                
+                <div class="menu-footer">
+                    <p class="menu-version">v1.0.0</p>
+                    <p class="menu-credits">Made with ❤️ for Valentine's Day</p>
+                    
+                    <!-- PWA Install Button (shown only when installable) -->
+                    <button id="install-button" class="install-button-menu" style="display: none;">
+                        📱 Ana Ekrana Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SETTINGS MODAL (Inside Game Overlay) -->
+        <div id="settings-modal" class="modal-overlay">
+            <div class="settings-card">
+                <button class="modal-close" id="settings-close">✕</button>
+                <h2 class="settings-title">⚙️ Ayarlar</h2>
+                
+                <div class="settings-content">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-icon">🎵</span>
+                            <div class="setting-text">
+                                <div class="setting-label">Müzik</div>
+                                <div class="setting-desc">Arka plan müziği</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-music" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-icon">🔊</span>
+                            <div class="setting-text">
+                                <div class="setting-label">Ses Efektleri</div>
+                                <div class="setting-desc">Oyun sesleri</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-sfx" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-icon">📳</span>
+                            <div class="setting-text">
+                                <div class="setting-label">Titreşim</div>
+                                <div class="setting-desc">Dokunsal geri bildirim</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-haptic" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <span class="setting-icon">🎨</span>
+                            <div class="setting-text">
+                                <div class="setting-label">Parçacık Efektleri</div>
+                                <div class="setting-desc">Görsel efektler (performans)</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-particles" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- HOW TO PLAY MODAL (Inside Game Overlay) -->
+        <div id="howto-modal" class="modal-overlay">
+            <div class="howto-card">
+                <button class="modal-close" id="howto-close">✕</button>
+                <h2 class="howto-title">❓ Nasıl Oynanır</h2>
+                
+                <div class="howto-content">
+                    <div class="howto-section">
+                        <div class="howto-icon">👆</div>
+                        <h3>Kontroller</h3>
+                        <p>Parmağını kaydırarak veya fareyi hareket ettirerek Burak'ı kontrol et ve kalpleri yakala!</p>
+                    </div>
+                    
+                    <div class="howto-section">
+                        <div class="howto-icon">❤️</div>
+                        <h3>Kalpler</h3>
+                        <p><strong>❤️ Kırmızı:</strong> +1 puan<br>
+                        <strong>💖 Pembe:</strong> +2 puan<br>
+                        <strong>💎 Elmas:</strong> +5 puan<br>
+                        <strong>💔 Kırık:</strong> -1 can</p>
+                    </div>
+                    
+                    <div class="howto-section">
+                        <div class="howto-icon">🔥</div>
+                        <h3>Kombo Sistemi</h3>
+                        <p>Arka arkaya kalp yakala ve kombo yap! Her kombo puanını artırır. Kırık kalp yakalamaktan kaçın!</p>
+                    </div>
+                    
+                    <div class="howto-section">
+                        <div class="howto-icon">⚔️</div>
+                        <h3>Boss Savaşları</h3>
+                        <p>Her dalgada bir boss ile karşılaşacaksın. Özel kalpleri yakalayarak boss'a hasar ver!</p>
+                    </div>
+                    
+                    <div class="howto-section">
+                        <div class="howto-icon">🎯</div>
+                        <h3>Hedef</h3>
+                        <p>Her dalgada belirli bir skora ulaş ve boss'u yen. 12 dalga tamamla ve oyunu bitir!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <button id="game-close" class="game-close-btn">✕</button>
         <button id="game-pause" class="game-pause-btn">⏸️</button>
+        
+        <!-- Boss Dialogue System -->
+        <div id="boss-dialogue" class="boss-dialogue hidden">
+            <div class="dialogue-container">
+                <div class="dialogue-character" id="dialogue-character">👤</div>
+                <div class="dialogue-bubble">
+                    <div class="dialogue-name" id="dialogue-name">Burak</div>
+                    <div class="dialogue-text" id="dialogue-text">...</div>
+                </div>
+            </div>
+        </div>
         <div class="game-hud">
             <div class="game-hud-item">
                 <span class="hud-label">CAN</span>
@@ -148,12 +322,80 @@
             <p class="game-over-message" id="game-over-msg"></p>
             <div class="game-over-buttons">
                 <button id="game-restart" class="game-btn game-btn-primary">🔄 Tekrar Oyna</button>
+                <button id="game-stats-btn" class="game-btn game-btn-secondary">📊 İstatistikler</button>
                 <button id="game-quit" class="game-btn game-btn-secondary">❌ Kapat</button>
             </div>
         </div>
+        
+        <!-- STATS & ACHIEVEMENTS MODAL (Inside Game Overlay) -->
+        <div id="stats-modal" class="modal-overlay">
+            <div class="stats-card">
+                <button class="modal-close" id="stats-close">✕</button>
+                <h2 class="stats-title">📊 İstatistikler & Başarımlar</h2>
+                
+                <div class="stats-tabs">
+                    <button class="stats-tab active" data-tab="stats">İstatistikler</button>
+                    <button class="stats-tab" data-tab="achievements">Başarımlar</button>
+                </div>
+                
+                <div class="stats-content">
+                    <!-- Stats Tab -->
+                    <div class="stats-tab-content active" id="stats-tab">
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-icon">🏆</div>
+                                <div class="stat-value" id="total-high-score">0</div>
+                                <div class="stat-label">En Yüksek Skor</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-icon">❤️</div>
+                                <div class="stat-value" id="total-hearts">0</div>
+                                <div class="stat-label">Toplam Kalp</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-icon">⚔️</div>
+                                <div class="stat-value" id="total-bosses">0</div>
+                                <div class="stat-label">Boss Yenildi</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-icon">🔥</div>
+                                <div class="stat-value" id="total-combo">0</div>
+                                <div class="stat-label">En Uzun Combo</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-icon">🎮</div>
+                                <div class="stat-value" id="total-games">0</div>
+                                <div class="stat-label">Oyun Sayısı</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-icon">👑</div>
+                                <div class="stat-value" id="highest-wave">0</div>
+                                <div class="stat-label">En Yüksek Dalga</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Achievements Tab -->
+                    <div class="stats-tab-content" id="achievements-tab">
+                        <div class="achievement-progress">
+                            <div class="progress-text">
+                                <span id="achievement-count">0/18</span>
+                                <span id="achievement-percent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="achievement-progress"></div>
+                            </div>
+                        </div>
+                        <div class="achievements-list" id="achievements-list">
+                            <!-- Achievements will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <!-- LOVE NOTE MODAL -->
+    
+    <!-- LOVE NOTE MODAL (Outside Game Overlay) -->
     <div id="love-modal" class="modal-overlay">
         <div class="note-card">
             <p id="note-text" class="note-content">Seni seviyorum çünkü...</p>
@@ -166,12 +408,19 @@
         <source src="dilerimki.mp3" type="audio/mpeg">
         Tarayıcınız ses elementini desteklemiyor.
     </audio>
+    
+    <!-- Game Music (Love-themed game music) -->
+    <audio id="game-music" loop>
+        <!-- Placeholder for game music - will use Web Audio API for now -->
+    </audio>
 
     <!-- Background Canvas for Particles -->
     <canvas id="canvas"></canvas>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <script src="boss-mechanics.js"></script>
+    <script src="achievements.js"></script>
     <script src="script.js"></script>
 </body>
 

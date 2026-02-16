@@ -4,10 +4,34 @@
     const introText = document.getElementById('intro-text');
     const mainContent = document.getElementById('main-content');
     const bgMusic = document.getElementById('bg-music');
+    const gameMusic = document.getElementById('game-music');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const musicControl = document.getElementById('music-control');
     const counterEl = document.getElementById('counter');
+    
+    // Main Menu Elements
+    const mainMenu = document.getElementById('main-menu');
+    const menuPlay = document.getElementById('menu-play');
+    const menuStats = document.getElementById('menu-stats');
+    const menuHowto = document.getElementById('menu-howto');
+    const menuSettings = document.getElementById('menu-settings');
+    
+    // Settings Modal Elements
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsClose = document.getElementById('settings-close');
+    const settingMusic = document.getElementById('setting-music');
+    const settingSfx = document.getElementById('setting-sfx');
+    const settingHaptic = document.getElementById('setting-haptic');
+    const settingParticles = document.getElementById('setting-particles');
+    
+    // How To Play Modal Elements
+    const howtoModal = document.getElementById('howto-modal');
+    const howtoClose = document.getElementById('howto-close');
+    
+    // Stats Modal Elements
+    const statsModal = document.getElementById('stats-modal');
+    const statsClose = document.getElementById('stats-close');
 
     // State Variables
     let width, height;
@@ -16,9 +40,520 @@
     let introClickable = false;
     let isMusicPlaying = false;
     let lastFireworkTime = 0;
+    
+    // Settings State
+    let settings = {
+        music: true,
+        sfx: true,
+        haptic: true,
+        particles: true
+    };
+    
+    // Load settings from localStorage
+    function loadSettings() {
+        const saved = localStorage.getItem('gameSettings');
+        if (saved) {
+            settings = { ...settings, ...JSON.parse(saved) };
+        }
+        
+        // Apply settings to UI
+        if (settingMusic) settingMusic.checked = settings.music;
+        if (settingSfx) settingSfx.checked = settings.sfx;
+        if (settingHaptic) settingHaptic.checked = settings.haptic;
+        if (settingParticles) settingParticles.checked = settings.particles;
+        
+        // Apply settings to game
+        mobileSettings.hapticEnabled = settings.haptic;
+        if (!settings.music) {
+            bgMusic.pause();
+            isMusicPlaying = false;
+        }
+    }
+    
+    // Save settings to localStorage
+    function saveSettings() {
+        localStorage.setItem('gameSettings', JSON.stringify(settings));
+    }
 
-    // Mobile Check (Robust)
+    // Mobile Check (Enhanced)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    // Mobile-specific settings
+    const mobileSettings = {
+        particleReduction: isMobile ? 0.5 : 1, // 50% fewer particles on mobile
+        hapticEnabled: true,
+        swipeEnabled: true,
+        fullscreenEnabled: true
+    };
+    
+    // ===================================================================
+    // MAIN MENU FUNCTIONALITY
+    // ===================================================================
+    
+    // Menu button handlers
+    if (menuPlay) {
+        menuPlay.addEventListener('click', () => {
+            if (mainMenu) mainMenu.classList.add('hidden');
+            // Start game immediately
+            startGame();
+        });
+    }
+    
+    if (menuStats) {
+        menuStats.addEventListener('click', () => {
+            openStatsModal();
+        });
+    }
+    
+    if (menuHowto) {
+        menuHowto.addEventListener('click', () => {
+            if (howtoModal) howtoModal.classList.add('active');
+        });
+    }
+    
+    if (menuSettings) {
+        menuSettings.addEventListener('click', () => {
+            if (settingsModal) settingsModal.classList.add('active');
+        });
+    }
+    
+    // Settings modal handlers
+    if (settingsClose) {
+        settingsClose.addEventListener('click', () => {
+            if (settingsModal) settingsModal.classList.remove('active');
+        });
+    }
+    
+    if (settingMusic) {
+        settingMusic.addEventListener('change', (e) => {
+            settings.music = e.target.checked;
+            saveSettings();
+            
+            if (settings.music && state === 'MAIN') {
+                bgMusic.play().catch(() => {});
+                isMusicPlaying = true;
+            } else {
+                bgMusic.pause();
+                isMusicPlaying = false;
+            }
+        });
+    }
+    
+    if (settingSfx) {
+        settingSfx.addEventListener('change', (e) => {
+            settings.sfx = e.target.checked;
+            saveSettings();
+        });
+    }
+    
+    if (settingHaptic) {
+        settingHaptic.addEventListener('change', (e) => {
+            settings.haptic = e.target.checked;
+            mobileSettings.hapticEnabled = e.target.checked;
+            saveSettings();
+        });
+    }
+    
+    if (settingParticles) {
+        settingParticles.addEventListener('change', (e) => {
+            settings.particles = e.target.checked;
+            saveSettings();
+        });
+    }
+    
+    // How to play modal handlers
+    if (howtoClose) {
+        howtoClose.addEventListener('click', () => {
+            if (howtoModal) howtoModal.classList.remove('active');
+        });
+    }
+    
+    // Stats modal close handler (for menu stats button)
+    if (statsClose) {
+        statsClose.addEventListener('click', () => {
+            if (statsModal) statsModal.classList.remove('active');
+        });
+    }
+    
+    // Close modals on background click
+    if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('active');
+            }
+        });
+    }
+    
+    if (howtoModal) {
+        howtoModal.addEventListener('click', (e) => {
+            if (e.target === howtoModal) {
+                howtoModal.classList.remove('active');
+            }
+        });
+    }
+    
+    if (statsModal) {
+        statsModal.addEventListener('click', (e) => {
+            if (e.target === statsModal) {
+                statsModal.classList.remove('active');
+            }
+        });
+    }
+    
+    // Load settings on init
+    loadSettings();
+
+    // ===================================================================
+    // MOBILE ENHANCEMENTS - Haptic Feedback System
+    // ===================================================================
+    const HapticFeedback = {
+        // Vibration patterns
+        patterns: {
+            light: [10],
+            medium: [20],
+            heavy: [30],
+            success: [10, 20, 10],
+            error: [50, 30, 50],
+            warning: [20, 10, 20, 10, 20],
+            heartCatch: [5],
+            diamondCatch: [10, 5, 10],
+            bossDamage: [30, 20, 30],
+            bossDefeat: [50, 30, 50, 30, 100],
+            combo: [5, 5, 5],
+            powerup: [15, 10, 15]
+        },
+        
+        vibrate(pattern) {
+            if (!mobileSettings.hapticEnabled || !navigator.vibrate) return;
+            
+            // iOS doesn't support pattern arrays, only single values
+            if (isIOS) {
+                const duration = Array.isArray(pattern) ? pattern[0] : pattern;
+                navigator.vibrate(duration);
+            } else {
+                navigator.vibrate(pattern);
+            }
+        },
+        
+        light() { this.vibrate(this.patterns.light); },
+        medium() { this.vibrate(this.patterns.medium); },
+        heavy() { this.vibrate(this.patterns.heavy); },
+        success() { this.vibrate(this.patterns.success); },
+        error() { this.vibrate(this.patterns.error); },
+        warning() { this.vibrate(this.patterns.warning); },
+        heartCatch() { this.vibrate(this.patterns.heartCatch); },
+        diamondCatch() { this.vibrate(this.patterns.diamondCatch); },
+        bossDamage() { this.vibrate(this.patterns.bossDamage); },
+        bossDefeat() { this.vibrate(this.patterns.bossDefeat); },
+        combo() { this.vibrate(this.patterns.combo); },
+        powerup() { this.vibrate(this.patterns.powerup); }
+    };
+
+    // ===================================================================
+    // MOBILE ENHANCEMENTS - Swipe Gesture System
+    // ===================================================================
+    const SwipeGesture = {
+        startX: 0,
+        startY: 0,
+        startTime: 0,
+        
+        init() {
+            if (!mobileSettings.swipeEnabled || !isMobile) return;
+            
+            document.addEventListener('touchstart', (e) => {
+                this.startX = e.touches[0].clientX;
+                this.startY = e.touches[0].clientY;
+                this.startTime = Date.now();
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const endTime = Date.now();
+                
+                const deltaX = endX - this.startX;
+                const deltaY = endY - this.startY;
+                const deltaTime = endTime - this.startTime;
+                
+                // Detect swipe (fast movement)
+                if (deltaTime < 300 && Math.abs(deltaX) > 50) {
+                    if (deltaX > 0) {
+                        this.onSwipeRight();
+                    } else {
+                        this.onSwipeLeft();
+                    }
+                }
+                
+                if (deltaTime < 300 && Math.abs(deltaY) > 50) {
+                    if (deltaY > 0) {
+                        this.onSwipeDown();
+                    } else {
+                        this.onSwipeUp();
+                    }
+                }
+            }, { passive: true });
+        },
+        
+        onSwipeRight() {
+            // Could be used for special moves
+            console.log('Swipe Right');
+        },
+        
+        onSwipeLeft() {
+            console.log('Swipe Left');
+        },
+        
+        onSwipeUp() {
+            // BOSS MECHANIC: Reflect heart back to boss
+            if (gameActive && bossActive && !bossIntroTimer && !bossDefeatedTimer) {
+                reflectHeartToBoss();
+            }
+        },
+        
+        onSwipeDown() {
+            console.log('Swipe Down');
+        }
+    };
+
+    // ===================================================================
+    // BOSS SPECIAL MECHANICS
+    // ===================================================================
+    
+    let lastReflectTime = 0;
+    let bossSpecialHeartTimer = 0;
+    
+    function reflectHeartToBoss() {
+        // Cooldown check (1 second)
+        const now = Date.now();
+        if (now - lastReflectTime < 1000) {
+            addCatchEffect(gameW / 2, gameH / 2, '⏱️ Bekle!', false);
+            return;
+        }
+        lastReflectTime = now;
+        
+        // Find closest heart to Burak
+        const burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        let closestHeart = null;
+        let closestDist = Infinity;
+        
+        for (let i = 0; i < fallingHearts.length; i++) {
+            const h = fallingHearts[i];
+            const dist = Math.sqrt(Math.pow(h.x - burakX, 2) + Math.pow(h.y - burakTop, 2));
+            if (dist < closestDist && dist < 150) { // Within 150px
+                closestDist = dist;
+                closestHeart = { heart: h, index: i };
+            }
+        }
+        
+        if (closestHeart) {
+            const h = closestHeart.heart;
+            
+            // Remove from falling hearts
+            fallingHearts.splice(closestHeart.index, 1);
+            
+            // Create reflected projectile
+            const angle = Math.atan2(bossY - h.y, bossX - h.x);
+            const speed = 8;
+            
+            // Add to special projectiles array
+            if (!window.bossProjectiles) window.bossProjectiles = [];
+            window.bossProjectiles.push({
+                x: h.x,
+                y: h.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                emoji: '⚡',
+                size: 35,
+                damage: 1
+            });
+            
+            // Visual feedback
+            addCatchEffect(h.x, h.y, '⚡ YANSIMA!', true);
+            playSound('combo');
+            HapticFeedback.medium();
+            
+            // Particle trail
+            for (let i = 0; i < 5; i++) {
+                catchEffects.push({
+                    x: h.x,
+                    y: h.y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    life: 0.8,
+                    color: '#ffeb3b',
+                    size: 3,
+                    sparkle: true
+                });
+            }
+        } else {
+            addCatchEffect(gameW / 2, gameH / 2, '❌ Kalp Yok!', false);
+        }
+    }
+    
+    function updateBossProjectiles(dt) {
+        if (!window.bossProjectiles) window.bossProjectiles = [];
+        
+        for (let i = window.bossProjectiles.length - 1; i >= 0; i--) {
+            const proj = window.bossProjectiles[i];
+            
+            // Update position
+            proj.x += proj.vx;
+            proj.y += proj.vy;
+            
+            // Check collision with boss
+            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+            const dist = Math.sqrt(Math.pow(proj.x - bossX, 2) + Math.pow(proj.y - renderBossY, 2));
+            
+            if (dist < 60) {
+                // Hit boss!
+                damageBoss(proj.damage, 'projectile');
+                window.bossProjectiles.splice(i, 1);
+                continue;
+            }
+            
+            // Remove if off screen
+            if (proj.y < -50 || proj.x < -50 || proj.x > gameW + 50) {
+                window.bossProjectiles.splice(i, 1);
+                continue;
+            }
+            
+            // Draw projectile
+            gameCtx.save();
+            gameCtx.translate(proj.x, proj.y);
+            
+            // Glow effect
+            gameCtx.shadowBlur = 20;
+            gameCtx.shadowColor = '#ffeb3b';
+            
+            gameCtx.font = `${proj.size}px serif`;
+            gameCtx.textAlign = 'center';
+            gameCtx.textBaseline = 'middle';
+            gameCtx.fillStyle = '#000000';
+            gameCtx.fillText(proj.emoji, 0, 0);
+            
+            gameCtx.restore();
+            
+            // Trail effect
+            if (gameFrameCount % 2 === 0) {
+                catchEffects.push({
+                    x: proj.x,
+                    y: proj.y,
+                    vx: 0,
+                    vy: 0,
+                    life: 0.5,
+                    color: '#ffeb3b',
+                    size: 2
+                });
+            }
+        }
+    }
+    
+    function spawnBossSpecialHeart() {
+        // Boss drops special hearts that damage it when caught
+        const bossConfig = WAVES[currentWave - 1]?.boss || {};
+        const specialHeart = bossConfig.specialHeart || { emoji: '⭐', name: 'Özel Kalp', damage: 1 };
+        
+        fallingHearts.push({
+            x: bossX + (Math.random() - 0.5) * 50,
+            y: bossY + 40,
+            vy: 2.5,
+            vx: (Math.random() - 0.5) * 0.5,
+            type: {
+                emoji: specialHeart.emoji,
+                points: 50,
+                size: 32,
+                speed: 2.5,
+                isBossWeakness: true,
+                bossDamage: specialHeart.damage // Special flag for damage amount
+            },
+            rotation: 0,
+            rotSpeed: 0.1
+        });
+        
+        // Visual effect
+        addCatchEffect(bossX, bossY, `${specialHeart.emoji} ${specialHeart.name}!`, true);
+    }
+
+    // ===================================================================
+    // MOBILE ENHANCEMENTS - Fullscreen & Orientation
+    // ===================================================================
+    const MobileScreen = {
+        init() {
+            if (!isMobile) return;
+            
+            // Request fullscreen on first interaction
+            document.addEventListener('touchstart', () => {
+                this.requestFullscreen();
+            }, { once: true });
+            
+            // Handle orientation changes
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    resize();
+                    if (gameActive) resizeGameCanvas();
+                }, 100);
+            });
+            
+            // Prevent pull-to-refresh on iOS
+            document.body.addEventListener('touchmove', (e) => {
+                if (e.target === document.body) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Prevent double-tap zoom
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        },
+        
+        requestFullscreen() {
+            if (!mobileSettings.fullscreenEnabled) return;
+            
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {});
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        },
+        
+        exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+    };
+
+    // Initialize mobile enhancements
+    if (isMobile) {
+        SwipeGesture.init();
+        MobileScreen.init();
+    }
+
+    // ===================================================================
+    // MOBILE ENHANCEMENTS - Performance Optimization
+    // ===================================================================
+    function getMobileParticleCount(desktopCount) {
+        return Math.ceil(desktopCount * mobileSettings.particleReduction);
+    }
 
     // -----------------------------------------------------------------
     // RESIZE HANDLING
@@ -856,6 +1391,8 @@
     const gameCloseBtn = document.getElementById('game-close');
     const gameRestartBtn = document.getElementById('game-restart');
     const gameQuitBtn = document.getElementById('game-quit');
+    const gameStatsBtn = document.getElementById('game-stats-btn');
+    // statsModal and statsClose already declared at top
     const waveBanner = document.getElementById('game-wave-banner');
     const heartEasterEgg = document.getElementById('heart-easter-egg');
 
@@ -864,7 +1401,7 @@
     let gameActive = false;
     let gameSessionId = 0; // NEW: Track unique game sessions to prevent overlapping loops
     let gameScore = 0;
-    let gameLives = 3;
+    let gameLives = 5; // Increased from 3 to 5 for better balance
     let gameCombo = 1;
     let gameConsecutiveCatches = 0;
     let gameAnimFrame = null;
@@ -896,6 +1433,14 @@
     let loveBlastActive = false;
     let loveBlastTimer = 0;
 
+    // --- NEW: Additional Power-up States ---
+    let doublePointsActive = false;
+    let doublePointsTimer = 0;
+    let precisionActive = false;
+    let precisionTimer = 0;
+    let streakProtectActive = false;
+    let streakProtectTimer = 0;
+
     // --- NEW: Background Theme State ---
     let currentBg1 = { r: 13, g: 0, b: 26 };
     let currentBg2 = { r: 26, g: 5, b: 32 };
@@ -908,7 +1453,7 @@
     let bossesDefeated = 0;
     let gamePaused = false;
 
-    // --- NEW: Boss state ---
+    // --- NEW: Boss State Variables ---
     let bossActive = false;
     let bossHP = 0;
     let bossMaxHP = 3;
@@ -916,6 +1461,29 @@
     let bossY = 0;
     let bossDir = 1;
     let bossHitFlash = 0;
+    let bossPhase = 1; // NEW: Boss phase (1, 2, 3 based on HP)
+    let bossIntroTimer = 0; // NEW: Boss entrance animation timer
+    let bossDefeatedTimer = 0; // NEW: Boss death animation timer
+    let bossWarningShown = false; // NEW: Warning before boss appears
+    let bossClickCooldown = 0; // NEW: Prevent spam clicking (0.5s cooldown)
+    let bossLastDamageTime = 0; // NEW: Track last damage time
+    let bernaLastSpecialHeartTime = 0; // NEW: Cooldown for special heart spawning
+    
+    // --- NEW: Boss Controller Instance ---
+    let bossController = null;
+    if (typeof BossController !== 'undefined') {
+        bossController = new BossController({
+            gameW: 0, // Will be set when game starts
+            gameH: 0
+        });
+    }
+    
+    // --- NEW: Achievement System Instance ---
+    let achievementSystem = null;
+    if (typeof AchievementSystem !== 'undefined') {
+        achievementSystem = new AchievementSystem();
+        console.log('Achievement System initialized');
+    }
 
     // --- NEW: DOM refs ---
     const gamePauseBtn = document.getElementById('game-pause');
@@ -977,6 +1545,9 @@
     }
 
     function playSound(type) {
+        // Check if SFX is enabled
+        if (!settings.sfx) return;
+        
         try {
             const ctx = getAudioCtx();
             const osc = ctx.createOscillator();
@@ -1056,8 +1627,215 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.35);
+            } else if (type === 'powerup') {
+                // Rising arpeggio for power-up
+                const notes = [440, 554, 659, 880];
+                notes.forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.type = 'triangle';
+                    o.frequency.value = freq;
+                    g.gain.value = 0.1;
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1 * (i + 1) + 0.1);
+                    o.start(ctx.currentTime + 0.08 * i);
+                    o.stop(ctx.currentTime + 0.08 * i + 0.15);
+                });
+                return;
+            } else if (type === 'bossdefeat') {
+                // Victory fanfare
+                const melody = [523, 659, 784, 1047, 1319];
+                melody.forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.value = freq;
+                    g.gain.value = 0.15;
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15 * (i + 1) + 0.2);
+                    o.start(ctx.currentTime + 0.12 * i);
+                    o.stop(ctx.currentTime + 0.12 * i + 0.25);
+                });
+                return;
+            } else if (type === 'achievement') {
+                // Special achievement sound
+                const notes = [659, 784, 1047, 1319, 1568];
+                notes.forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.value = freq;
+                    g.gain.value = 0.12;
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1 * (i + 1) + 0.15);
+                    o.start(ctx.currentTime + 0.08 * i);
+                    o.stop(ctx.currentTime + 0.08 * i + 0.2);
+                });
+                return;
+            } else if (type === 'wavecomplete') {
+                // Wave complete jingle
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.type = 'triangle';
+                    o.frequency.value = freq;
+                    g.gain.value = 0.13;
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12 * (i + 1) + 0.18);
+                    o.start(ctx.currentTime + 0.1 * i);
+                    o.stop(ctx.currentTime + 0.1 * i + 0.22);
+                });
+                return;
             }
         } catch (e) { /* Audio not supported */ }
+    }
+
+    // --- Game Music System (Love-themed background music) ---
+    let gameMusicNodes = null;
+    let gameMusicPlaying = false;
+    
+    function startGameMusic() {
+        // Check if music is enabled in settings
+        if (!settings.music) return;
+        if (gameMusicPlaying) return;
+        
+        try {
+            const ctx = getAudioCtx();
+            gameMusicPlaying = true;
+            
+            // Create a romantic, upbeat melody using Web Audio API
+            // Chord progression: C - Am - F - G (I - vi - IV - V)
+            const chordProgression = [
+                [261.63, 329.63, 392.00], // C major (C-E-G)
+                [220.00, 261.63, 329.63], // A minor (A-C-E)
+                [174.61, 220.00, 261.63], // F major (F-A-C)
+                [196.00, 246.94, 293.66]  // G major (G-B-D)
+            ];
+            
+            const melodyNotes = [
+                523.25, 587.33, 659.25, 587.33, // C5 D5 E5 D5
+                523.25, 440.00, 493.88, 523.25, // C5 A4 B4 C5
+                698.46, 659.25, 587.33, 523.25, // F5 E5 D5 C5
+                587.33, 659.25, 587.33, 523.25  // D5 E5 D5 C5
+            ];
+            
+            gameMusicNodes = {
+                oscillators: [],
+                gains: []
+            };
+            
+            // Play chord progression (bass)
+            function playChordLoop() {
+                if (!gameMusicPlaying) return;
+                
+                chordProgression.forEach((chord, chordIndex) => {
+                    chord.forEach((freq, noteIndex) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        
+                        osc.type = 'sine';
+                        osc.frequency.value = freq * 0.5; // Lower octave for bass
+                        
+                        const startTime = ctx.currentTime + (chordIndex * 2);
+                        const duration = 1.8;
+                        
+                        gain.gain.setValueAtTime(0, startTime);
+                        gain.gain.linearRampToValueAtTime(0.03, startTime + 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                        
+                        osc.start(startTime);
+                        osc.stop(startTime + duration);
+                    });
+                });
+                
+                // Loop every 8 seconds (4 chords × 2 seconds each)
+                setTimeout(playChordLoop, 8000);
+            }
+            
+            // Play melody (lead)
+            function playMelodyLoop() {
+                if (!gameMusicPlaying) return;
+                
+                melodyNotes.forEach((freq, index) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    
+                    const startTime = ctx.currentTime + (index * 0.5);
+                    const duration = 0.4;
+                    
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                });
+                
+                // Loop every 8 seconds (16 notes × 0.5 seconds each)
+                setTimeout(playMelodyLoop, 8000);
+            }
+            
+            // Add heartbeat rhythm (kick drum)
+            function playHeartbeatLoop() {
+                if (!gameMusicPlaying) return;
+                
+                for (let i = 0; i < 8; i++) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = 60;
+                    
+                    const startTime = ctx.currentTime + (i * 1);
+                    const duration = 0.15;
+                    
+                    gain.gain.setValueAtTime(0.15, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                }
+                
+                setTimeout(playHeartbeatLoop, 8000);
+            }
+            
+            // Start all music layers
+            playChordLoop();
+            playMelodyLoop();
+            playHeartbeatLoop();
+            
+        } catch (e) {
+            console.log("Game music error:", e);
+        }
+    }
+    
+    function stopGameMusic() {
+        gameMusicPlaying = false;
+        
+        if (gameMusicNodes) {
+            // Clean up any remaining nodes
+            gameMusicNodes.oscillators.forEach(osc => {
+                try { osc.stop(); } catch (e) {}
+            });
+            gameMusicNodes = null;
+        }
     }
 
     // --- NEW: Color Translation Helpers ---
@@ -1098,55 +1876,429 @@
     const BERNA_SPRITE_SIZE = 100;
     const BURAK_CATCH_W = 100;
 
-    // ---- WAVE SYSTEM (Relationship stages) ----
+    // ---- WAVE SYSTEM (Relationship stages) - EXPANDED WITH UNIQUE BOSSES ----
     const WAVES = [
         {
-            name: "Tanışma 💫", scoreTarget: 500, spawnRate: 0.025, speedMul: 1.0, brokenWeight: 0,
-            boss: { emoji: '👾', color: '#a855f7', ability: 'standard' },
-            desc: "İlk bakışta her şey güzel...",
-            colors: ['#0d001a', '#1a0520']
+            name: "Şüphe Bulutu ☁️",
+            scoreTarget: 400, // Reduced from 500
+            spawnRate: 0.025,
+            speedMul: 1.0,
+            brokenWeight: 5,
+            boss: {
+                emoji: '☁️',
+                color: '#94a3b8',
+                ability: 'doubt_cloud',
+                name: 'Şüphe Bulutu',
+                specialHeart: { emoji: '☂️', name: 'Şemsiye', damage: 1 },
+                attacks: ['rain'],
+                description: 'Yağmur damlaları seni yavaşlatır',
+                dialogue: [
+                    { character: '☁️', name: 'Şüphe Bulutu', text: 'Gerçekten beni seviyor mu acaba?' },
+                    { character: '🎮', name: 'Burak', text: 'Şüpheler sadece bulut, gerçek aşk güneş gibi!' }
+                ]
+            },
+            desc: "Şüphe bulutları yaklaşıyor...",
+            colors: ['#0d001a', '#1a2e3a'],
+            effect: 'rain'
         },
         {
-            name: "İlk Kıvılcım 🎇", scoreTarget: 800, spawnRate: 0.03, speedMul: 1.15, brokenWeight: 5,
-            boss: { emoji: '🧛', color: '#ff4444', ability: 'fast' },
-            desc: "Kelebekler uçuşuyor!",
-            colors: ['#1a0520', '#2d0a3e']
+            name: "Öfke Alevi 🔥",
+            scoreTarget: 600, // Reduced from 800
+            spawnRate: 0.03,
+            speedMul: 1.1, // Reduced from 1.15
+            brokenWeight: 10,
+            boss: {
+                emoji: '🔥',
+                color: '#dc2626',
+                ability: 'rage_flame',
+                name: 'Öfke Alevi',
+                specialHeart: { emoji: '💧', name: 'Su Balonu', damage: 1 },
+                attacks: ['lava_bomb'],
+                description: 'Lav bombaları hareket alanını daraltır'
+            },
+            desc: "Öfke alevleri yükseliyor!",
+            colors: ['#1a2e3a', '#2d0000'],
+            effect: 'fire'
         },
         {
-            name: "Buluşmalar ☕", scoreTarget: 1200, spawnRate: 0.035, speedMul: 1.25, brokenWeight: 10,
-            boss: { emoji: '👻', color: '#ffffff', ability: 'pulse' },
+            name: "Soğuk Mesafe ❄️",
+            scoreTarget: 900, // Reduced from 1200
+            spawnRate: 0.035,
+            speedMul: 1.2, // Reduced from 1.25
+            brokenWeight: 15,
+            boss: {
+                emoji: '❄️',
+                color: '#06b6d4',
+                ability: 'cold_distance',
+                name: 'Soğuk Mesafe',
+                specialHeart: { emoji: '☕', name: 'Sıcak Çay', damage: 1 },
+                attacks: ['freeze'],
+                description: 'Donma yeteneği seni hareketsiz bırakır'
+            },
+            desc: "Soğuk mesafe donduruyor...",
+            colors: ['#2d0000', '#001a33'],
+            effect: 'ice'
+        },
+        {
+            name: "Fırtınalı Gün 🌪️",
+            scoreTarget: 1100, // Reduced from 1500
+            spawnRate: 0.04,
+            speedMul: 1.3, // Reduced from 1.4
+            brokenWeight: 20,
+            boss: {
+                emoji: '🌪️',
+                color: '#94a3b8',
+                ability: 'windy_day',
+                name: 'Fırtınalı Gün',
+                specialHeart: { emoji: '⚡', name: 'Kinetik Enerji', damage: 1 },
+                attacks: ['wind'],
+                description: 'Şiddetli rüzgar fizik kurallarını değiştirir'
+            },
+            desc: "Fırtına yaklaşıyor!",
+            colors: ['#001a33', '#1a2e3a'],
+            effect: 'storm'
+        },
+        {
+            name: "Kıskançlık Aynası 🪞",
+            scoreTarget: 1400, // Reduced from 2000
+            spawnRate: 0.045,
+            speedMul: 1.4, // Reduced from 1.5
+            brokenWeight: 22, // Reduced from 25
+            boss: {
+                emoji: '🪞',
+                color: '#7c3aed',
+                ability: 'jealousy_mirror',
+                name: 'Kıskançlık Aynası',
+                specialHeart: { emoji: '👓', name: 'Gerçeklik Gözlüğü', damage: 2 },
+                attacks: ['invert'],
+                description: 'Kontroller tersine döner'
+            },
+            desc: "Ayna seni aldatıyor...",
+            colors: ['#1a2e3a', '#1a0033'],
+            effect: 'mirror'
+        },
+        {
+            name: "Unutkanlık Sisi 🌫️",
+            scoreTarget: 1700, // Reduced from 2500
+            spawnRate: 0.05,
+            speedMul: 1.5, // Reduced from 1.6
+            brokenWeight: 25, // Reduced from 30
+            boss: {
+                emoji: '🌫️',
+                color: '#64748b',
+                ability: 'fog_forgetting',
+                name: 'Unutkanlık Sisi',
+                specialHeart: { emoji: '🔦', name: 'Fener', damage: 2 },
+                attacks: ['fog'],
+                description: 'Sis görüş alanını kısıtlar'
+            },
+            desc: "Sis her şeyi gizliyor...",
+            colors: ['#1a0033', '#2d2d3a'],
+            effect: 'fog'
+        },
+        {
+            name: "Ego Duvarı 🧱",
+            scoreTarget: 2000, // Reduced from 3000
+            spawnRate: 0.055,
+            speedMul: 1.6, // Reduced from 1.7
+            brokenWeight: 28, // Reduced from 35
+            boss: {
+                emoji: '🧱',
+                color: '#78716c',
+                ability: 'ego_wall',
+                name: 'Ego Duvarı',
+                specialHeart: { emoji: '🔨', name: 'Çekiç', damage: 2 },
+                attacks: ['block'],
+                description: 'Duvar kalpleri engeller'
+            },
+            desc: "Ego duvarı yükseliyor...",
+            colors: ['#2d2d3a', '#1a1a1a'],
+            effect: 'wall'
+        },
+        {
+            name: "Dedikodu Yılanı 🐍",
+            scoreTarget: 2400, // Reduced from 3500
+            spawnRate: 0.06,
+            speedMul: 1.65, // Reduced from 1.8
+            brokenWeight: 30, // Reduced from 40
+            boss: {
+                emoji: '🐍',
+                color: '#7c3aed',
+                ability: 'gossip_snake',
+                name: 'Dedikodu Yılanı',
+                specialHeart: { emoji: '🎧', name: 'Kulaklık', damage: 2 },
+                attacks: ['poison'],
+                description: 'Zehir sürekli hareket etmeyi zorlar'
+            },
+            desc: "Zehirli dedikodular yayılıyor...",
+            colors: ['#1a1a1a', '#2d0066'],
+            effect: 'poison'
+        },
+        {
+            name: "Teknoloji Canavarı 👾",
+            scoreTarget: 2800, // Reduced from 4000
+            spawnRate: 0.065,
+            speedMul: 1.7, // Reduced from 1.9
+            brokenWeight: 32, // Reduced from 45
+            boss: {
+                emoji: '👾',
+                color: '#22c55e',
+                ability: 'glitch',
+                name: 'Teknoloji Canavarı',
+                specialHeart: { emoji: '🔄', name: 'Reset Tuşu', damage: 4 }, // Increased from 3
+                attacks: ['lag'],
+                description: 'Lag simülasyonu kontrolleri geciktirir'
+            },
+            desc: "Sistem bozuluyor...",
+            colors: ['#2d0066', '#001a00'],
+            effect: 'glitch'
+        },
+        {
+            name: "Zaman Hırsızı ⏰",
+            scoreTarget: 3200, // Reduced from 4500
+            spawnRate: 0.07,
+            speedMul: 1.75, // Reduced from 2.0
+            brokenWeight: 33, // Reduced from 50
+            boss: {
+                emoji: '⏰',
+                color: '#fbbf24',
+                ability: 'time_thief',
+                name: 'Zaman Hırsızı',
+                specialHeart: { emoji: '🔋', name: 'Saat Pili', damage: 4 }, // Increased from 3
+                attacks: ['time_warp'],
+                description: 'Zaman manipülasyonu ritmi bozar'
+            },
+            desc: "Zaman çarpılıyor...",
+            colors: ['#001a00', '#1a1a00'],
+            effect: 'time'
+        },
+        {
+            name: "Sıradanlık Devşiricisi 🌑",
+            scoreTarget: 3600, // Reduced from 5000
+            spawnRate: 0.075,
+            speedMul: 1.8, // Reduced from 2.1
+            brokenWeight: 34, // Reduced from 55
+            boss: {
+                emoji: '🌑',
+                color: '#64748b',
+                ability: 'routine',
+                name: 'Sıradanlık Devşiricisi',
+                specialHeart: { emoji: '🌈', name: 'Gökkuşağı Boyası', damage: 4 }, // Increased from 3
+                attacks: ['grayscale'],
+                description: 'Renkleri çalar, kalpleri ayırt edemezsin'
+            },
+            desc: "Her şey gri oluyor...",
+            colors: ['#1a1a00', '#1a1a1a'],
+            effect: 'grayscale'
+        },
+        {
+            name: "Kara Sevda 💔",
+            scoreTarget: 4000, // Changed from Infinity to 4000
+            spawnRate: 0.08,
+            speedMul: 1.8, // Reduced from 2.2
+            brokenWeight: 35, // Reduced from 60
+            boss: {
+                emoji: '💔',
+                color: '#000000',
+                ability: 'dark_reflection',
+                name: 'Kara Sevda',
+                specialHeart: { emoji: '💖', name: 'Sonsuz Aşk', damage: 5 },
+                attacks: ['ultimate'],
+                description: 'Tüm yetenekleri birleştirir - FINAL BOSS'
+            },
+            desc: "Final savaş başlıyor!",
+            colors: ['#1a1a1a', '#000000'],
+            effect: 'darkness'
+        },
+        {
+            name: "Buluşmalar ☕", 
+            scoreTarget: 1200, 
+            spawnRate: 0.035, 
+            speedMul: 1.25, 
+            brokenWeight: 10,
+            boss: { 
+                emoji: '🥰', 
+                color: '#ff69b4', 
+                ability: 'dreamy',
+                name: 'Rüya Gibi',
+                specialHeart: { emoji: '�', name: 'Pembe Bulut', damage: 1 },
+                attacks: ['wave', 'float'],
+                description: 'Her an yeni bir anı'
+            },
             desc: "Her an yeni bir anı.",
-            colors: ['#2d0a3e', '#4a0e2a']
+            colors: ['#2d0a3e', '#4a0e2a'],
+            effect: 'aurora'
         },
         {
-            name: "Derin Bağ 🔗", scoreTarget: 1500, spawnRate: 0.04, speedMul: 1.4, brokenWeight: 15,
-            boss: { emoji: '🌪️', color: '#94a3b8', ability: 'wind' },
+            name: "Derin Bağ 🔗", 
+            scoreTarget: 1500, 
+            spawnRate: 0.04, 
+            speedMul: 1.4, 
+            brokenWeight: 15,
+            boss: { 
+                emoji: '😌', 
+                color: '#94a3b8', 
+                ability: 'calm',
+                name: 'Huzurlu Ruh',
+                specialHeart: { emoji: '🤍', name: 'Beyaz Güvercin', damage: 1 },
+                attacks: ['wind', 'spiral'],
+                description: 'Aşkınız güçleniyor'
+            },
             desc: "Aşkınız güçleniyor.",
-            colors: ['#4a0e2a', '#1a0b1c']
+            colors: ['#4a0e2a', '#1a0b1c'],
+            effect: 'wind'
         },
         {
-            name: "Fırtına Öncesi 🌪️", scoreTarget: 2000, spawnRate: 0.05, speedMul: 1.6, brokenWeight: 25,
-            boss: { emoji: '⚡', color: '#facc15', ability: 'burst' },
+            name: "İlk Kavga 💢", 
+            scoreTarget: 2000, 
+            spawnRate: 0.05, 
+            speedMul: 1.6, 
+            brokenWeight: 25,
+            boss: { 
+                emoji: '😠', 
+                color: '#dc2626', 
+                ability: 'angry',
+                name: 'Öfke Fırtınası',
+                specialHeart: { emoji: '💥', name: 'Patlama Kalbi', damage: 2 },
+                attacks: ['burst', 'rage', 'lightning'],
+                description: 'Zorluklar sizi yıldırmasın'
+            },
             desc: "Zorluklar sizi yıldırmasın!",
-            colors: ['#1a0b1c', '#0f172a']
+            colors: ['#1a0b1c', '#2d0000'],
+            effect: 'storm'
         },
         {
-            name: "Güneşli Günler 🌞", scoreTarget: 2500, spawnRate: 0.045, speedMul: 1.4, brokenWeight: 10,
-            boss: { emoji: '🐲', color: '#22c55e', ability: 'magnet' },
+            name: "Barışma 🕊️", 
+            scoreTarget: 2500, 
+            spawnRate: 0.045, 
+            speedMul: 1.4, 
+            brokenWeight: 10,
+            boss: { 
+                emoji: '😇', 
+                color: '#fbbf24', 
+                ability: 'healing',
+                name: 'Affedici Melek',
+                specialHeart: { emoji: '✨', name: 'Işık Kalbi', damage: 1 },
+                attacks: ['heal', 'bless', 'shield'],
+                description: 'Her şey yolunda'
+            },
             desc: "Her şey yolunda.",
-            colors: ['#0f172a', '#1a2e05']
+            colors: ['#2d0000', '#1a2e05'],
+            effect: 'holy'
         },
         {
-            name: "Sonsuz Güven 🤝", scoreTarget: 3000, spawnRate: 0.055, speedMul: 1.7, brokenWeight: 20,
-            boss: { emoji: '👑', color: '#fbbf24', ability: 'mirage' },
+            name: "Kıskançlık 👁️", 
+            scoreTarget: 3000, 
+            spawnRate: 0.055, 
+            speedMul: 1.7, 
+            brokenWeight: 20,
+            boss: { 
+                emoji: '😈', 
+                color: '#7c3aed', 
+                ability: 'jealous',
+                name: 'Karanlık Gölge',
+                specialHeart: { emoji: '🖤', name: 'Karanlık Kalp', damage: 2 },
+                attacks: ['mirage', 'clone', 'curse'],
+                description: 'Birbirinize güvenin'
+            },
             desc: "Birbirinize güvenin.",
-            colors: ['#1a2e05', '#06201e']
+            colors: ['#1a2e05', '#1a0033'],
+            effect: 'dark'
         },
         {
-            name: "Sonsuzluk ♾️", scoreTarget: Infinity, spawnRate: 0.065, speedMul: 1.9, brokenWeight: 30,
-            boss: { emoji: '💎', color: '#38bdf8', ability: 'chaos' },
+            name: "Güven Krizi 🌑", 
+            scoreTarget: 3500, 
+            spawnRate: 0.06, 
+            speedMul: 1.8, 
+            brokenWeight: 30,
+            boss: { 
+                emoji: '👿', 
+                color: '#991b1b', 
+                ability: 'demon',
+                name: 'İçimizdeki Şeytan',
+                specialHeart: { emoji: '🔥', name: 'Cehennem Ateşi', damage: 3 },
+                attacks: ['hellfire', 'teleport', 'chaos'],
+                description: 'En karanlık an'
+            },
+            desc: "En karanlık an...",
+            colors: ['#1a0033', '#330000'],
+            effect: 'inferno'
+        },
+        {
+            name: "Yeniden Doğuş 🌅", 
+            scoreTarget: 4000, 
+            spawnRate: 0.05, 
+            speedMul: 1.5, 
+            brokenWeight: 15,
+            boss: { 
+                emoji: '🦋', 
+                color: '#06b6d4', 
+                ability: 'rebirth',
+                name: 'Yeniden Doğan Aşk',
+                specialHeart: { emoji: '🌟', name: 'Yıldız Tozu', damage: 1 },
+                attacks: ['transform', 'butterfly', 'hope'],
+                description: 'Yeniden başlangıç'
+            },
+            desc: "Yeniden başlangıç.",
+            colors: ['#330000', '#001a33'],
+            effect: 'rebirth'
+        },
+        {
+            name: "Evlilik Teklifi 💍", 
+            scoreTarget: 5000, 
+            spawnRate: 0.055, 
+            speedMul: 1.6, 
+            brokenWeight: 10,
+            boss: { 
+                emoji: '💎', 
+                color: '#38bdf8', 
+                ability: 'diamond',
+                name: 'Elmas Kalp',
+                specialHeart: { emoji: '💍', name: 'Yüzük', damage: 2 },
+                attacks: ['sparkle', 'dazzle', 'shine'],
+                description: 'En özel an'
+            },
+            desc: "En özel an!",
+            colors: ['#001a33', '#0d1a2d'],
+            effect: 'diamond'
+        },
+        {
+            name: "Düğün 👰", 
+            scoreTarget: 6000, 
+            spawnRate: 0.06, 
+            speedMul: 1.7, 
+            brokenWeight: 5,
+            boss: { 
+                emoji: '🤵', 
+                color: '#ffffff', 
+                ability: 'wedding',
+                name: 'Mutlu Son',
+                specialHeart: { emoji: '🎊', name: 'Kutlama', damage: 1 },
+                attacks: ['celebration', 'confetti', 'joy'],
+                description: 'Evet diyorum!'
+            },
+            desc: "Evet diyorum!",
+            colors: ['#0d1a2d', '#1a1a2e'],
+            effect: 'celebration'
+        },
+        {
+            name: "Sonsuzluk ♾️", 
+            scoreTarget: Infinity, 
+            spawnRate: 0.065, 
+            speedMul: 1.9, 
+            brokenWeight: 30,
+            boss: { 
+                emoji: '♾️', 
+                color: '#a855f7', 
+                ability: 'eternal',
+                name: 'Sonsuz Aşk',
+                specialHeart: { emoji: '♾️', name: 'Sonsuzluk', damage: 5 },
+                attacks: ['infinity', 'timeless', 'eternal', 'cosmic'],
+                description: 'Aşk sonsuza kadar'
+            },
             desc: "Aşk sonsuza kadar!",
-            colors: ['#06201e', '#0d001a']
+            colors: ['#1a1a2e', '#0d001a'],
+            effect: 'cosmos'
         },
     ];
 
@@ -1173,12 +2325,16 @@
         ];
     }
 
-    // Power-up types
+    // Power-up types - EXPANDED
     const POWERUP_TYPES = [
-        { emoji: '🛡️', type: 'shield', size: 35, speed: 1.5, duration: 8 },
-        { emoji: '🧲', type: 'magnet', size: 35, speed: 1.5, duration: 8 },
-        { emoji: '⏳', type: 'slowmo', size: 35, speed: 1.5, duration: 6 },
-        { emoji: '🌈', type: 'rainbow', size: 35, speed: 1.8, duration: 8 }, // NEW: Love Blast
+        { emoji: '🛡️', type: 'shield', size: 35, speed: 1.5, duration: 8, desc: 'Kalkan' },
+        { emoji: '🧲', type: 'magnet', size: 35, speed: 1.5, duration: 8, desc: 'Mıknatıs' },
+        { emoji: '⏳', type: 'slowmo', size: 35, speed: 1.5, duration: 6, desc: 'Yavaşlatma' },
+        { emoji: '🌈', type: 'rainbow', size: 35, speed: 1.8, duration: 8, desc: 'Aşk Patlaması' },
+        { emoji: '⚡', type: 'lightning', size: 35, speed: 1.8, duration: 0, desc: 'Şimşek' }, // Instant effect
+        { emoji: '💫', type: 'double', size: 35, speed: 1.5, duration: 10, desc: 'Çift Puan' },
+        { emoji: '🎯', type: 'precision', size: 35, speed: 1.5, duration: 8, desc: 'Otomatik Hedefleme' },
+        { emoji: '🔥', type: 'streak', size: 35, speed: 1.5, duration: 12, desc: 'Kombo Koruyucu' },
     ];
 
     const GAME_OVER_MESSAGES = [
@@ -1317,7 +2473,14 @@
                 heartEasterEgg.style.transform = 'scale(1.5) rotate(15deg)';
                 setTimeout(() => {
                     heartEasterEgg.style.transform = '';
-                    startGame();
+                    // Show game overlay with main menu
+                    if (gameOverlay) {
+                        gameOverlay.classList.remove('hidden');
+                        gameOverlay.classList.add('active');
+                    }
+                    if (mainMenu) {
+                        mainMenu.classList.remove('hidden');
+                    }
                 }, 800);
             }
         });
@@ -1426,19 +2589,262 @@
         }, 2500);
     }
 
+    // ----------------------------
+    // Boss Dialogue System
+    // ----------------------------
+    function showBossDialogue(dialogues) {
+        const dialogueEl = document.getElementById('boss-dialogue');
+        const characterEl = document.getElementById('dialogue-character');
+        const nameEl = document.getElementById('dialogue-name');
+        const textEl = document.getElementById('dialogue-text');
+        
+        if (!dialogueEl || !dialogues || dialogues.length === 0) return;
+        
+        let currentIndex = 0;
+        
+        function showNext() {
+            if (currentIndex >= dialogues.length) {
+                // Hide dialogue after last message
+                setTimeout(() => {
+                    dialogueEl.classList.add('hidden');
+                }, 2500);
+                return;
+            }
+            
+            const dialogue = dialogues[currentIndex];
+            characterEl.textContent = dialogue.character;
+            nameEl.textContent = dialogue.name;
+            textEl.textContent = dialogue.text;
+            
+            dialogueEl.classList.remove('hidden');
+            
+            currentIndex++;
+            setTimeout(showNext, 3000); // Show each dialogue for 3 seconds
+        }
+        
+        // Start showing dialogues after boss intro
+        setTimeout(showNext, 2500);
+    }
+
     function checkWaveProgress() {
         const config = getCurrentWaveConfig();
-        // If relative wave score reached AND no boss is currently active, spawn the stage boss
-        if (waveScoreEarned >= config.scoreTarget && !bossActive && !waveTransitioning) {
-            bossActive = true;
-            bossHP = Math.ceil((bossMaxHP + currentWave) / 2);
-            bossX = gameW / 2;
-            bossY = 80;
-            bossDir = 1;
-            bossHitFlash = 0;
-            playSound('boss');
-            addCatchEffect(bossX, bossY, 'AZKALDI! BOSS GELDİ!', true);
+        // Boss warning at 80% progress
+        if (waveScoreEarned >= config.scoreTarget * 0.8 && !bossWarningShown && !bossActive) {
+            bossWarningShown = true;
+            showBossWarning();
         }
+        
+        // Spawn boss when target reached
+        if (waveScoreEarned >= config.scoreTarget && !bossActive && !waveTransitioning) {
+            spawnBoss();
+        }
+    }
+
+    function showBossWarning() {
+        // Visual warning that boss is coming
+        addCatchEffect(gameW / 2, gameH / 2 - 100, '⚠️ BOSS YAKLAŠIYOR! ⚠️', true);
+        playSound('boss');
+        
+        // Screen flash
+        damageFlash = 0.3;
+        
+        // Shake effect
+        if (gameOverlay) {
+            gameOverlay.classList.add('shake');
+            setTimeout(() => gameOverlay.classList.remove('shake'), 600);
+        }
+    }
+
+    function spawnBoss() {
+        bossActive = true;
+        const bossConfig = WAVES[currentWave - 1]?.boss || { emoji: '💔', color: '#ff4444' };
+        
+        // Boss HP scales with wave (more balanced)
+        bossMaxHP = 3 + Math.floor(currentWave / 3); // Changed from /2 to /3
+        bossHP = bossMaxHP;
+        
+        // Boss starts above screen
+        bossX = gameW / 2;
+        bossY = -100;
+        bossDir = 1;
+        bossHitFlash = 0;
+        bossPhase = 1;
+        bossIntroTimer = 2.0; // 2 second intro animation
+        bossDefeatedTimer = 0;
+        
+        // Boss entrance announcement
+        const bossName = bossConfig.name || 'Boss';
+        showWaveBanner(`💀 ${bossConfig.emoji} ${bossName} ${bossConfig.emoji} 💀`);
+        playSound('boss');
+        
+        // Show boss dialogue if available
+        if (bossConfig.dialogue) {
+            showBossDialogue(bossConfig.dialogue);
+        }
+        
+        // Clear all hearts for dramatic effect
+        fallingHearts = [];
+        
+        // Screen effects
+        damageFlash = 0.5;
+        
+        // Tutorial hints for boss mechanics (show after intro)
+        setTimeout(() => {
+            if (bossActive) {
+                const specialHeart = bossConfig.specialHeart || { emoji: '⭐', name: 'Özel Kalp' };
+                addCatchEffect(gameW / 2, gameH / 2 - 50, `${specialHeart.emoji} ${specialHeart.name} yakala!`, true);
+                setTimeout(() => {
+                    if (bossActive) {
+                        addCatchEffect(gameW / 2, gameH / 2, '↑ Kaydır = Yansıt!', true);
+                    }
+                }, 1500);
+            }
+        }, 2500);
+    }
+
+    function updateBossPhase() {
+        const hpPercent = bossHP / bossMaxHP;
+        if (hpPercent > 0.66) {
+            bossPhase = 1; // Healthy
+        } else if (hpPercent > 0.33) {
+            bossPhase = 2; // Wounded
+        } else {
+            bossPhase = 3; // Critical
+        }
+    }
+
+    function damageBoss(amount = 1, source = 'collision') {
+        if (!bossActive || bossIntroTimer > 0 || bossDefeatedTimer > 0) return;
+        
+        // Cooldown check - prevent spam (0.3 second cooldown for all sources)
+        const now = Date.now();
+        if (now - bossLastDamageTime < 300) {
+            // Show cooldown message only for click
+            if (source === 'click') {
+                addCatchEffect(bossX, bossY, '⏱️ Bekle!', false);
+            }
+            return;
+        }
+        bossLastDamageTime = now;
+        
+        bossHP -= amount;
+        bossHitFlash = 8;
+        updateBossPhase();
+        
+        // Haptic feedback
+        HapticFeedback.bossDamage();
+        
+        const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+        
+        // Visual feedback based on source
+        if (source === 'click') {
+            addCatchEffect(bossX, renderBossY, '👊 -' + amount, true);
+        } else if (source === 'weakness') {
+            addCatchEffect(bossX, renderBossY, '⭐ -' + amount, true);
+        } else if (source === 'projectile') {
+            addCatchEffect(bossX, renderBossY, '⚡ -' + amount, true);
+        } else {
+            addCatchEffect(bossX, renderBossY, '💥 -' + amount, true);
+        }
+        
+        playSound('bosshit');
+        
+        // Particle burst
+        const particleCount = bossPhase === 3 ? 20 : 12;
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const force = 3 + Math.random() * 5;
+            catchEffects.push({
+                x: bossX,
+                y: renderBossY,
+                vx: Math.cos(angle) * force,
+                vy: Math.sin(angle) * force,
+                life: 0.8,
+                color: bossPhase === 3 ? '#ff0000' : ['#ff4444', '#ff8800', '#ffff00'][Math.floor(Math.random() * 3)],
+                size: 4
+            });
+        }
+        
+        // Screen shake intensity based on phase
+        if (gameOverlay) {
+            gameOverlay.classList.add('shake');
+            setTimeout(() => gameOverlay.classList.remove('shake'), 300);
+        }
+        
+        // Knockback - push boss back up
+        bossY -= 80 + (bossPhase * 20); // More knockback in later phases
+        if (bossY < 80) bossY = 80;
+        
+        // Clear broken hearts on hit
+        fallingHearts = fallingHearts.filter(h => !h.type.isBroken);
+        
+        // Check if boss defeated
+        if (bossHP <= 0) {
+            defeatBoss();
+        }
+    }
+
+    function defeatBoss() {
+        bossDefeatedTimer = 3.0; // 3 second death animation
+        bossesDefeated++;
+        gameScore += 500 + (currentWave * 100); // Bonus increases with wave
+        if (gameScoreEl) gameScoreEl.textContent = gameScore;
+        
+        // Achievement tracking
+        if (achievementSystem) {
+            achievementSystem.incrementStat('totalBossesDefeated');
+            achievementSystem.updateStat('highestWave', currentWave);
+            achievementSystem.updateStat('bossesDefeated', bossesDefeated);
+            
+            // Check if defeated with 1 HP
+            if (gameLives === 1) {
+                achievementSystem.updateStat('bossDefeatedWith1HP', true);
+            }
+            
+            // Check for perfect wave (no damage)
+            if (achievementSystem.stats.currentWaveDamage === 0) {
+                achievementSystem.incrementStat('perfectWaves');
+            }
+            
+            // Reset wave damage counter
+            achievementSystem.stats.currentWaveDamage = 0;
+            
+            // Check wave 3 speed
+            if (currentWave === 3 && achievementSystem.stats.gameStartTime) {
+                const elapsed = (Date.now() - achievementSystem.stats.gameStartTime) / 1000;
+                achievementSystem.updateStat('fastestWave3', elapsed);
+            }
+        }
+        
+        // Haptic feedback for victory
+        HapticFeedback.bossDefeat();
+        
+        // Victory announcement
+        addCatchEffect(gameW / 2, gameH / 2, '🎉 BOSS YENİLDİ! 🎉', true);
+        playSound('bossdefeat'); // Victory fanfare
+        
+        // Optimized particle explosion (reduced for performance)
+        const particleCount = getMobileParticleCount(80); // 80 on desktop, 40 on mobile
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const force = 4 + Math.random() * 12;
+            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+            catchEffects.push({
+                x: bossX,
+                y: renderBossY,
+                vx: Math.cos(angle) * force,
+                vy: Math.sin(angle) * force,
+                life: 1.5 + Math.random() * 0.5,
+                color: ['#ffd700', '#ff69b4', '#00ffff', '#ff4444', '#00ff00'][Math.floor(Math.random() * 5)],
+                size: 3 + Math.random() * 4
+            });
+        }
+        
+        // Screen flash
+        damageFlash = 1.0;
+        
+        // Clear all hearts
+        fallingHearts = [];
     }
 
     function updateWaveColors() {
@@ -1498,21 +2904,31 @@
     }
 
     // ----------------------------
-    // Power-up activation
+    // Power-up activation - EXPANDED
     // ----------------------------
     function activatePowerUp(type) {
+        HapticFeedback.powerup(); // Haptic feedback for all power-ups
+        
+        // Achievement tracking
+        if (achievementSystem) {
+            achievementSystem.updateStat('powerUpsUsed', type);
+        }
+        
         if (type === 'shield') {
             shieldActive = true;
-            shieldTimer = 5;
+            shieldTimer = 8;
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ Kalkan!', true);
+            playSound('combo');
         } else if (type === 'magnet') {
             magnetActive = true;
-            magnetTimer = 4;
+            magnetTimer = 8;
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🧲 Mıknatıs!', true);
+            playSound('combo');
         } else if (type === 'slowmo') {
             slowMoActive = true;
-            slowMoTimer = 6; // Set timer!
+            slowMoTimer = 6;
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '⏳ Yavaşla!', true);
+            playSound('freeze');
         } else if (type === 'rainbow') {
             loveBlastActive = true;
             loveBlastTimer = 8;
@@ -1526,6 +2942,69 @@
                     addCatchEffect(h.x, h.y, '✨', true);
                 }
             });
+        } else if (type === 'lightning') {
+            // ⚡ LIGHTNING - Instant effect: Collect all hearts on screen!
+            addCatchEffect(gameW / 2, gameH / 2, '⚡ ŞİMŞEK!', true);
+            playSound('levelup');
+            
+            // Collect all non-broken hearts
+            let collected = 0;
+            for (let i = fallingHearts.length - 1; i >= 0; i--) {
+                const h = fallingHearts[i];
+                if (!h.type.isBroken) {
+                    const earned = h.type.points * gameCombo;
+                    gameScore += earned;
+                    waveScoreEarned += earned;
+                    totalHeartsCaught++;
+                    collected++;
+                    
+                    // Lightning bolt effect from heart to Burak
+                    for (let j = 0; j < 3; j++) {
+                        catchEffects.push({
+                            x: h.x,
+                            y: h.y,
+                            vx: (burakX - h.x) / 10 + (Math.random() - 0.5) * 2,
+                            vy: (gameH - BURAK_SPRITE_SIZE / 2 - h.y) / 10 + (Math.random() - 0.5) * 2,
+                            life: 0.6,
+                            color: '#ffeb3b',
+                            size: 3,
+                            sparkle: true
+                        });
+                    }
+                    
+                    fallingHearts.splice(i, 1);
+                }
+            }
+            
+            if (collected > 0) {
+                addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, `+${collected} ❤️`, true);
+                if (gameScoreEl) gameScoreEl.textContent = gameScore;
+                checkWaveProgress();
+            }
+            
+            // Screen flash
+            damageFlash = 0.8;
+            
+        } else if (type === 'double') {
+            // 💫 DOUBLE POINTS
+            doublePointsActive = true;
+            doublePointsTimer = 10;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '💫 ÇİFT PUAN!', true);
+            playSound('levelup');
+            
+        } else if (type === 'precision') {
+            // 🎯 PRECISION - Auto-aim hearts towards Burak
+            precisionActive = true;
+            precisionTimer = 8;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🎯 Otomatik Hedef!', true);
+            playSound('combo');
+            
+        } else if (type === 'streak') {
+            // 🔥 STREAK PROTECTOR - Prevents combo loss
+            streakProtectActive = true;
+            streakProtectTimer = 12;
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🔥 Kombo Koruması!', true);
+            playSound('combo');
         }
     }
 
@@ -1535,11 +3014,7 @@
 
     function gameLoop(sessionId) {
         if (!gameActive || !gameCtx || gamePaused || sessionId !== gameSessionId) {
-            if (sessionId !== gameSessionId) {
-                console.log("gameLoop terminated: session ID mismatch", sessionId, "current:", gameSessionId);
-            } else if (!gameActive) {
-                console.log("gameLoop returned because !gameActive");
-            }
+            // Silently terminate old game loops without spamming console
             return;
         }
         gameAnimFrame = requestAnimationFrame(() => gameLoop(sessionId));
@@ -1572,148 +3047,132 @@
         // Background Effects Render
         gameCtx.globalAlpha = 1;
 
+        // Define burakTop early for use in boss abilities
+        const burakTop = gameH - BURAK_SPRITE_SIZE / 2;
 
-
-        // ... (background effects code remains same) ...
-
-        // BOSS LOGIC
+        // ============================================
+        // BOSS LOGIC - COMPLETELY REWRITTEN
+        // ============================================
         if (bossActive) {
-            gameCtx.save(); // SAVE for boss-wide shake
-            // Enhanced Screen Shake (Canvas Offset)
-            if (bossHitFlash > 0 || (damageFlash > 0 && Math.random() > 0.5)) {
-                gameCtx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-            }
-
-            // Boss movement
-            bossX += bossDir * 1.5;
-            if (bossX > gameW - 60) bossDir = -1;
-            if (bossX < 60) bossDir = 1;
-
-            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
             const bossConfig = WAVES[currentWave - 1]?.boss || { emoji: '💔', color: '#ff4444' };
-
-            // Draw Boss
-            gameCtx.save();
-            gameCtx.translate(bossX, renderBossY);
-
-            // Glow effect based on boss color
-            gameCtx.shadowBlur = 25;
-            gameCtx.shadowColor = bossConfig.color;
-
-            // Shake if hit
-            if (bossHitFlash > 0) {
-                gameCtx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
-                bossHitFlash--;
-            }
-            gameCtx.font = '85px serif';
-            gameCtx.textAlign = 'center';
-            gameCtx.textBaseline = 'middle';
-            // iOS Fix: Reset fillStyle to ensure emoji renders visible
-            gameCtx.fillStyle = '#000000';
-            gameCtx.fillText(bossConfig.emoji, 0, 0);
-
-            // Reset shadow
-            gameCtx.shadowBlur = 0;
-
-            // Boss HP Bar
-            gameCtx.fillStyle = 'rgba(0,0,0,0.5)';
-            gameCtx.fillRect(-40, 50, 80, 10);
-            gameCtx.fillStyle = '#ff4444';
-            const maxHP = Math.ceil((bossMaxHP + currentWave) / 2);
-            gameCtx.fillRect(-38, 52, 76 * (bossHP / maxHP), 6);
-            gameCtx.restore();
-
-            // Original attack removed, handled in abilities section
-
-            // Boss Collision (Player hits Boss)
-            bossY += Math.sin(gameTime) * 0.4 + 0.2; // Slowly going down
-
-            // Safety cap: Stay in top 65% of screen for dodge room
-            if (bossY > gameH * 0.65) bossY = gameH * 0.65;
-
-            // REACHABILITY FIX: Hit detection relative to screen height
-            if (bossY > gameH * 0.5 && Math.abs(bossX - burakX) < 110) {
-
-                // Hit the boss!
-                bossHP--;
-                bossHitFlash = 5;
-                bossY -= 180; // Knockback up
-                if (bossY < 0) bossY = 0;
-                playSound('bosshit');
-                addCatchEffect(bossX, bossY, '💥', true);
-
-                // HIT RELIEF: Clear all currently falling broken hearts
-                fallingHearts = fallingHearts.filter(h => !h.type.isBroken);
-
-                // Screen shake
-                if (gameOverlay) {
-                    gameOverlay.classList.add('shake');
-                    setTimeout(() => gameOverlay.classList.remove('shake'), 400);
-                }
-
-                if (bossHP <= 0) {
-                    bossActive = false;
-                    bossesDefeated++;
-                    gameScore += 500;
-                    if (gameScoreEl) gameScoreEl.textContent = gameScore;
-
-                    // --- ENHANCED BOSS DEATH EFFECT (OPTIMIZED) ---
-
-                    // 1. One-time massive particle burst
-                    for (let i = 0; i < 80; i++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const force = 2 + Math.random() * 8;
-                        const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+            const ability = bossConfig.ability;
+            
+            // Boss Intro Animation
+            if (bossIntroTimer > 0) {
+                bossIntroTimer -= dt;
+                
+                // Boss descends from above
+                const introProgress = 1 - (bossIntroTimer / 2.0);
+                // Adjust boss descent based on screen height (landscape mode fix)
+                const bossDescentTarget = gameH < 500 ? 120 : 180; // Less descent in landscape
+                bossY = -100 + (bossDescentTarget * easeOutBounce(introProgress));
+                
+                // Pulsing entrance effect
+                const pulseScale = 1 + Math.sin(introProgress * Math.PI * 4) * 0.2;
+                
+                gameCtx.save();
+                gameCtx.translate(bossX, bossY);
+                gameCtx.scale(pulseScale, pulseScale);
+                
+                // Dramatic glow
+                gameCtx.shadowBlur = 40;
+                gameCtx.shadowColor = bossConfig.color;
+                
+                gameCtx.font = '85px serif';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#000000';
+                gameCtx.fillText(bossConfig.emoji, 0, 0);
+                
+                gameCtx.restore();
+                
+                // Entrance particles
+                if (gameFrameCount % 3 === 0) {
+                    for (let i = 0; i < 3; i++) {
                         catchEffects.push({
-                            x: bossX,
-                            y: renderBossY,
-                            vx: Math.cos(angle) * force,
-                            vy: Math.sin(angle) * force,
-                            life: 1 + Math.random() * 0.5,
-                            color: `hsl(${340 + Math.random() * 40}, 100%, 70%)`,
-                            size: Math.random() * 4 + 2,
-                            sparkle: Math.random() > 0.5
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: bossY + (Math.random() - 0.5) * 100,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: Math.random() * 2 + 1,
+                            life: 1,
+                            color: bossConfig.color,
+                            size: 3
                         });
                     }
-
-                    // 2. A few rings for visual flare
-                    for (let j = 0; j < 5; j++) {
-                        setTimeout(() => {
-                            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
-                            catchEffects.push({
-                                x: bossX, y: renderBossY,
-                                vx: 0, vy: 0, life: 1, isRing: true,
-                                color: '#ffffff', size: 30 + j * 10
-                            });
-                        }, j * 100);
+                }
+                
+                // Don't process boss logic during intro
+                gameCtx.restore();
+            }
+            // Boss Death Animation
+            else if (bossDefeatedTimer > 0) {
+                bossDefeatedTimer -= dt;
+                
+                const deathProgress = 1 - (bossDefeatedTimer / 3.0);
+                
+                // Boss explodes and fades
+                const scale = 1 + (deathProgress * 2);
+                const alpha = 1 - deathProgress;
+                const rotation = deathProgress * Math.PI * 4;
+                
+                gameCtx.save();
+                gameCtx.translate(bossX, bossY);
+                gameCtx.rotate(rotation);
+                gameCtx.scale(scale, scale);
+                gameCtx.globalAlpha = alpha;
+                
+                gameCtx.shadowBlur = 50 * (1 - deathProgress);
+                gameCtx.shadowColor = bossConfig.color;
+                
+                gameCtx.font = '85px serif';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#000000';
+                gameCtx.fillText(bossConfig.emoji, 0, 0);
+                
+                gameCtx.restore();
+                
+                // Continuous particle explosion
+                if (gameFrameCount % 2 === 0) {
+                    for (let i = 0; i < 5; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const force = 5 + Math.random() * 10;
+                        catchEffects.push({
+                            x: bossX,
+                            y: bossY,
+                            vx: Math.cos(angle) * force,
+                            vy: Math.sin(angle) * force,
+                            life: 1.5,
+                            color: ['#ffd700', '#ff69b4', '#00ffff', '#ff4444', '#00ff00'][Math.floor(Math.random() * 5)],
+                            size: 3 + Math.random() * 3
+                        });
                     }
-
-                    // 3. Final large explosion marker (Single text instead of 60)
-                    addCatchEffect(bossX, bossY + Math.sin(gameTime * 2) * 20, '💖 BOOM! 💖', true);
-
-                    // 4. Screen flash
-                    damageFlash = 1.0;
-
-                    // 5. Temporary slow motion for impact
-                    slowMoActive = true;
-                    slowMoTimer = 1.0;
-
-                    playSound('levelup');
-
-                    // PROGRESS TO NEXT WAVE
+                }
+                
+                // When animation ends, advance wave
+                if (bossDefeatedTimer <= 0) {
+                    bossActive = false;
+                    bossWarningShown = false;
+                    
+                    // Reset boss controller effects
+                    if (bossController) {
+                        bossController.reset();
+                    }
+                    
                     if (currentWave < WAVES.length) {
                         currentWave++;
-                        waveScoreEarned = 0; // Reset relative score for next phase
+                        waveScoreEarned = 0;
                         if (gameWaveEl) gameWaveEl.textContent = currentWave;
                         const newConfig = getCurrentWaveConfig();
                         showWaveBanner(newConfig.name, newConfig.desc);
-
+                        updateWaveColors();
+                        
                         if (bgMusic) {
                             bgMusic.playbackRate = Math.min(1.35, 1.0 + (currentWave - 1) * 0.05);
                         }
                     }
-
-                    // Drop a reward
+                    
+                    // Drop reward
                     fallingHearts.push({
                         x: bossX,
                         y: bossY,
@@ -1725,87 +3184,772 @@
                     });
                 }
             }
-
-            // --- BOSS ABILITIES ---
-            const ability = bossConfig.ability;
-
-            // Base movement boost for later levels
-            if (currentWave >= 2) {
-                bossX += bossDir * (0.5 * currentWave);
-            }
-
-            // Ability: Pulse (Attack Speed UP)
-            let bossAttackChance = 0.007 + (currentWave * 0.001);
-            if (ability === 'pulse') bossAttackChance *= 1.8;
-
-            // Ability: Crosswind
-            if (ability === 'wind') {
-                const windPower = Math.sin(gameTime * 3) * 3;
-                fallingHearts.forEach(h => h.vx += windPower * 0.02);
-            }
-
-            // Ability: Burst (Drop multiples)
-            const isBurst = (ability === 'burst' && Math.random() < 0.008);
-            const dropCount = isBurst ? 4 : 1;
-
-            if (Math.random() < bossAttackChance || isBurst) {
-                for (let i = 0; i < dropCount; i++) {
-                    let heartType = { emoji: '💔', points: -1, size: 28, isBroken: true };
-
-                    if (loveBlastActive) {
-                        heartType = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
-                    }
-
-                    fallingHearts.push({
-                        x: bossX + (Math.random() - 0.5) * (isBurst ? 150 : 30),
-                        y: renderBossY + 40,
-                        vy: 2.8 + (currentWave * 0.2),
-                        vx: (Math.random() - 0.5) * 0.6,
-                        type: heartType,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotSpeed: 0.1
-                    });
-                }
-            }
-
-            // Ability: Magnetize (Hearts pull away from player or towards boss)
-            if (ability === 'magnet') {
-                fallingHearts.forEach(h => {
-                    const dx = h.x - burakX;
-                    const dist = Math.abs(dx);
-                    if (dist < 250) {
-                        h.x += (dx > 0 ? 1 : -1) * 2; // Repel from player
-                    }
-                });
-            }
-
-            // Ability: Mirage (Ghost effects/Faster erratic movement)
-            if (ability === 'mirage') {
-                bossX += Math.sin(gameTime * 5) * 8; // Erratic jitter
-                // Draw a faint ghost
+            // Active Boss Fight
+            else {
                 gameCtx.save();
-                gameCtx.globalAlpha = 0.3;
-                gameCtx.fillText(bossConfig.emoji, bossX - bossDir * 40, renderBossY);
+                
+                // Screen shake on hit
+                if (bossHitFlash > 0) {
+                    gameCtx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+                    bossHitFlash--;
+                }
+                
+                // Boss Movement Pattern
+                const baseSpeed = 1.5 + (currentWave * 0.3);
+                bossX += bossDir * baseSpeed;
+                
+                // Phase-based movement changes
+                if (bossPhase === 3) {
+                    // Critical phase: erratic movement
+                    bossX += Math.sin(gameTime * 8) * 3;
+                } else if (bossPhase === 2) {
+                    // Wounded phase: faster
+                    bossX += bossDir * 0.5;
+                }
+                
+                // Bounce at edges
+                if (bossX > gameW - 60) bossDir = -1;
+                if (bossX < 60) bossDir = 1;
+                
+                // Boss slowly descends (threatening approach)
+                const descentSpeed = 0.15 + (bossPhase * 0.05); // Faster descent in later phases
+                // Slower descent in landscape mode to give player more space
+                bossY += gameH < 500 ? descentSpeed * 0.6 : descentSpeed;
+                
+                // Knockback when hit (handled in damageBoss)
+                // Stay within bounds - adjusted for landscape mode
+                const minBossY = gameH < 500 ? 60 : 80;
+                const maxBossY = gameH < 500 ? gameH * 0.5 : gameH * 0.7; // Much higher limit in landscape
+                if (bossY < minBossY) bossY = minBossY;
+                if (bossY > maxBossY) bossY = maxBossY; // Don't go too low
+                
+                // Vertical bobbing
+                const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+                
+                // Draw Boss with phase-based effects
+                gameCtx.save();
+                gameCtx.translate(bossX, renderBossY);
+                
+                // Phase-based visual effects
+                if (bossPhase === 3) {
+                    // Critical: red pulsing
+                    gameCtx.shadowBlur = 40 + Math.sin(gameTime * 10) * 20;
+                    gameCtx.shadowColor = '#ff0000';
+                } else if (bossPhase === 2) {
+                    // Wounded: orange glow
+                    gameCtx.shadowBlur = 30;
+                    gameCtx.shadowColor = '#ff8800';
+                } else {
+                    // Healthy: normal glow
+                    gameCtx.shadowBlur = 25;
+                    gameCtx.shadowColor = bossConfig.color;
+                }
+                
+                // Boss size scales with phase (gets smaller when damaged)
+                const phaseScale = 1 - ((3 - bossPhase) * 0.1);
+                gameCtx.scale(phaseScale, phaseScale);
+                
+                gameCtx.font = '85px serif';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#000000';
+                gameCtx.fillText(bossConfig.emoji, 0, 0);
+                
+                gameCtx.restore();
+                
+                // Boss Collision Detection - REMOVED
+                // Boss can only be damaged by special mechanics (reflect hearts, catch special hearts)
+                
+                // Boss Attack Patterns (Phase-based) - UNIQUE PER BOSS
+                let attackChance = 0.007 + (currentWave * 0.001);
+                if (bossPhase === 3) attackChance *= 2.5; // Critical phase attacks more
+                else if (bossPhase === 2) attackChance *= 1.5;
+                
+                // Boss Special Heart Spawning - NOW HANDLED BY BERNA
+                // Berna throws special hearts during boss fight
+                // (See Berna heart spawning section above)
+                
+                // UNIQUE BOSS ABILITIES - Each boss has different attack patterns
+                if (ability === 'doubt_cloud') {
+                    // Boss 1: Doubt Cloud - Rain and Slow Debuff
+                    // Enable slow debuff (only once per boss fight)
+                    if (!bossController.activeEffects.has('doubt_cloud')) {
+                        bossController.enableDoubtCloud();
+                    }
+                    bossController.updateRainEffect(fallingHearts, bossX, renderBossY);
+                    
+                    // Also spawn some broken hearts
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.0,
+                            vx: (Math.random() - 0.5) * 1,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.0, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    
+                } else if (ability === 'rage_flame') {
+                    // Boss 2: Rage Flame - Lava Bombs and Area Denial
+                    // Enable rage flame (only once per boss fight)
+                    if (!bossController.activeEffects.has('rage_flame')) {
+                        bossController.enableRageFlame();
+                    }
+                    bossController.updateLavaBombs(dt, fallingHearts, bossX, renderBossY, gameW, gameH);
+                    
+                    // Also spawn broken hearts
+                    attackChance *= 1.5;
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: 3.0 + Math.random(),
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 3.0, isBroken: true },
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: 0.15
+                        });
+                    }
+                    
+                } else if (ability === 'cold_distance') {
+                    // Boss 3: Cold Distance - Freeze Stun
+                    // Enable freeze (only once per boss fight)
+                    if (!bossController.activeEffects.has('cold_distance')) {
+                        bossController.enableColdDistance();
+                    }
+                    bossController.updateFreezeEffect(dt);
+                    
+                    // Random freeze attacks (RARE - mobile friendly)
+                    if (Math.random() < 0.005) { // 0.5% chance per frame (reduced from 1%)
+                        bossController.freezePlayer(2.0); // 2 seconds freeze
+                        addCatchEffect(bossX, renderBossY, '❄️ DONMA!', true);
+                        playSound('freeze');
+                    }
+                    
+                    // Also spawn broken hearts
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.5,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    
+                } else if (ability === 'windy_day') {
+                    // Boss 4: Windy Day - Strong Wind Physics
+                    // Enable wind (only once per boss fight)
+                    if (!bossController.activeEffects.has('windy_day')) {
+                        bossController.enableWindyDay();
+                    }
+                    bossController.applyWindPhysics(fallingHearts, gameTime);
+                    
+                    // Also spawn broken hearts with wind effect
+                    attackChance *= 1.3;
+                    if (Math.random() < attackChance) {
+                        const windStrength = Math.sin(gameTime * 2) * 3;
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: 2.8,
+                            vx: windStrength + (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.8, isBroken: true },
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: 0.12
+                        });
+                    }
+                    
+                } else if (ability === 'jealousy_mirror') {
+                    // Boss 5: Jealousy Mirror - Inverted Controls
+                    if (!bossController.activeEffects.has('jealousy_mirror')) {
+                        bossController.enableJealousyMirror();
+                        addCatchEffect(gameW / 2, gameH / 2, '🪞 KONTROLLER TERSİNE DÖNDÜ!', true);
+                    }
+                    
+                    // Spawn broken hearts
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.5,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    
+                } else if (ability === 'fog_forgetting') {
+                    // Boss 6: Fog of Forgetting - Spotlight Vision
+                    if (!bossController.activeEffects.has('fog_forgetting')) {
+                        bossController.enableFogForgetting();
+                        addCatchEffect(gameW / 2, gameH / 2, '🌫️ SİS GELDİ!', true);
+                    }
+                    
+                    // Spawn broken hearts (harder to see)
+                    attackChance *= 1.4;
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 120,
+                            y: renderBossY + 40,
+                            vy: 3.0,
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 3.0, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.12
+                        });
+                    }
+                    
+                } else if (ability === 'ego_wall') {
+                    // Boss 7: Ego Wall - Physical Block
+                    if (!bossController.activeEffects.has('ego_wall')) {
+                        bossController.enableEgoWall();
+                        addCatchEffect(gameW / 2, gameH / 2, '🧱 DUVAR OLUŞTU!', true);
+                    }
+                    
+                    // Spawn broken hearts (blocked by wall)
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.3,
+                            vx: (Math.random() - 0.5) * 1,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.3, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    
+                } else if (ability === 'gossip_snake') {
+                    // Boss 8: Gossip Snake - Poison DOT
+                    if (!bossController.activeEffects.has('gossip_snake')) {
+                        bossController.enableGossipSnake();
+                    }
+                    
+                    // Update poison zones and check damage
+                    const inPoison = bossController.updatePoisonZones(dt, burakX, burakTop, gameH);
+                    if (inPoison && Math.random() < 0.02) { // 2% chance per frame when in poison
+                        takeDamage();
+                        addCatchEffect(burakX, burakTop, '☠️ ZEHİR!', false);
+                    }
+                    
+                    // Spawn broken hearts more frequently
+                    attackChance *= 1.5;
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: 2.8,
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.8, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.12
+                        });
+                    }
+                    
+                } else if (ability === 'glitch') {
+                    // Boss 9: Glitch - Input Lag
+                    if (!bossController.activeEffects.has('glitch')) {
+                        bossController.enableGlitch();
+                        addCatchEffect(gameW / 2, gameH / 2, '⚠️ GLITCH!', true);
+                    }
+                    
+                    // Spawn broken hearts
+                    attackChance *= 1.5;
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: 3.2,
+                            vx: (Math.random() - 0.5) * 2.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 3.2, isBroken: true },
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: 0.15
+                        });
+                    }
+                    
+                } else if (ability === 'time_thief') {
+                    // Boss 10: Time Thief - Bullet Time
+                    if (!bossController.activeEffects.has('time_thief')) {
+                        bossController.enableTimeThief();
+                    }
+                    bossController.updateTimeScale(gameTime);
+                    
+                    // Time scale is applied to NEW hearts only (not existing ones)
+                    // Existing hearts maintain their speed to prevent exponential acceleration
+                    
+                    // Spawn broken hearts with time-scaled speed
+                    const timeScale = bossController.getTimeScale();
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.4 * timeScale,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.4, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    
+                } else if (ability === 'routine') {
+                    // Boss 11: Routine - Grayscale Mode
+                    if (!bossController.activeEffects.has('routine')) {
+                        bossController.enableRoutine();
+                        addCatchEffect(gameW / 2, gameH / 2, '⬜ RENKLER KAYBOLDU!', true);
+                    }
+                    
+                    // Spawn broken hearts (hard to distinguish)
+                    attackChance *= 1.3;
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 90,
+                            y: renderBossY + 40,
+                            vy: 2.7,
+                            vx: (Math.random() - 0.5) * 1.8,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.7, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.11
+                        });
+                    }
+                    
+                } else if (ability === 'dark_reflection') {
+                    // Boss 12: Dark Reflection - Multi-phase Final Boss
+                    if (!bossController.activeEffects.has('dark_reflection')) {
+                        bossController.enableDarkReflection();
+                        addCatchEffect(gameW / 2, gameH / 2, '💀 FİNAL BOSS!', true);
+                    }
+                    
+                    // Phase 1: Wind (like Boss 4)
+                    if (bossPhase === 1) {
+                        bossController.applyWindPhysics(fallingHearts, gameTime);
+                    }
+                    // Phase 2: Fog (like Boss 6)
+                    else if (bossPhase === 2) {
+                        if (!bossController.fogActive) {
+                            bossController.enableFogForgetting();
+                        }
+                    }
+                    // Phase 3: Ultimate - Berna trapped, no hearts
+                    else if (bossPhase === 3) {
+                        bernaOpacity = 0.3; // Berna trapped in crystal
+                        // No hearts spawn in phase 3
+                    }
+                    
+                    // Spawn broken hearts (phases 1-2 only)
+                    if (bossPhase < 3) {
+                        attackChance *= 2.0; // Final boss is aggressive
+                        if (Math.random() < attackChance) {
+                            const windStrength = bossPhase === 1 ? Math.sin(gameTime * 2) * 3 : 0;
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 120,
+                                y: renderBossY + 40,
+                                vy: 3.5,
+                                vx: windStrength + (Math.random() - 0.5) * 3,
+                                type: { emoji: '💔', points: -1, size: 28, speed: 3.5, isBroken: true },
+                                rotation: Math.random() * Math.PI * 2,
+                                rotSpeed: 0.18
+                            });
+                        }
+                    }
+                    
+                } else if (ability === 'dreamy') {
+                    // Wave 3: Dreamy - Floating wave pattern
+                    if (Math.random() < attackChance) {
+                        const waveOffset = Math.sin(gameTime * 2) * 100;
+                        fallingHearts.push({
+                            x: bossX + waveOffset,
+                            y: renderBossY + 40,
+                            vy: 2.2,
+                            vx: Math.cos(gameTime * 2) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.2, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    // Floating effect on all hearts
+                    fallingHearts.forEach(h => {
+                        h.vx += Math.sin(gameTime * 3 + h.y * 0.01) * 0.05;
+                    });
+                    
+                } else if (ability === 'calm') {
+                    // Wave 4: Calm - Wind and spiral patterns
+                    if (Math.random() < attackChance) {
+                        const angle = gameTime * 2;
+                        fallingHearts.push({
+                            x: bossX + Math.cos(angle) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.5,
+                            vx: Math.sin(angle) * 1.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
+                            rotation: angle,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    // Wind effect
+                    const windPower = Math.sin(gameTime * 3) * 3;
+                    fallingHearts.forEach(h => h.vx += windPower * 0.02);
+                    
+                } else if (ability === 'angry') {
+                    // Wave 5: Angry - Rage mode with lightning bursts
+                    attackChance *= 2.5;
+                    const isRage = Math.random() < 0.015;
+                    if (Math.random() < attackChance || isRage) {
+                        const count = isRage ? 6 : 2;
+                        for (let i = 0; i < count; i++) {
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 150,
+                                y: renderBossY + 40,
+                                vy: 4.0 + Math.random() * 2,
+                                vx: (Math.random() - 0.5) * 3,
+                                type: { emoji: '💔', points: -1, size: 28, speed: 4.0, isBroken: true },
+                                rotation: Math.random() * Math.PI * 2,
+                                rotSpeed: 0.2
+                            });
+                        }
+                        // Lightning effect
+                        if (isRage) {
+                            for (let i = 0; i < 10; i++) {
+                                catchEffects.push({
+                                    x: bossX + (Math.random() - 0.5) * 100,
+                                    y: renderBossY,
+                                    vx: (Math.random() - 0.5) * 5,
+                                    vy: Math.random() * 3,
+                                    life: 0.5,
+                                    color: '#ffeb3b',
+                                    size: 3
+                                });
+                            }
+                        }
+                    }
+                    // Screen shake
+                    if (bossPhase === 3 && Math.random() < 0.02) {
+                        damageFlash = 0.1;
+                    }
+                    
+                } else if (ability === 'healing') {
+                    // Wave 6: Healing - Defensive, spawns shields
+                    if (Math.random() < attackChance * 0.8) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 60,
+                            y: renderBossY + 40,
+                            vy: 2.0,
+                            vx: (Math.random() - 0.5) * 0.5,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.0, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    // Healing aura - boss glows
+                    gameCtx.save();
+                    gameCtx.globalAlpha = 0.3;
+                    const healGlow = 50 + Math.sin(gameTime * 5) * 20;
+                    gameCtx.shadowBlur = healGlow;
+                    gameCtx.shadowColor = '#fbbf24';
+                    gameCtx.restore();
+                    
+                } else if (ability === 'jealous') {
+                    // Wave 7: Jealous - Creates clones and mirages
+                    if (Math.random() < attackChance) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 3.0,
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 3.0, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.15
+                        });
+                    }
+                    // Mirage effect - boss moves erratically
+                    bossX += Math.sin(gameTime * 8) * 10;
+                    // Ghost trails
+                    if (gameFrameCount % 3 === 0) {
+                        gameCtx.save();
+                        gameCtx.globalAlpha = 0.2;
+                        gameCtx.font = '85px serif';
+                        gameCtx.textAlign = 'center';
+                        gameCtx.fillStyle = '#000000';
+                        gameCtx.fillText(bossConfig.emoji, bossX - bossDir * 50, renderBossY);
+                        gameCtx.fillText(bossConfig.emoji, bossX + bossDir * 50, renderBossY);
+                        gameCtx.restore();
+                    }
+                    
+                } else if (ability === 'demon') {
+                    // Wave 8: Demon - Hellfire and chaos
+                    attackChance *= 3.0;
+                    const isHellfire = Math.random() < 0.02;
+                    if (Math.random() < attackChance || isHellfire) {
+                        const count = isHellfire ? 8 : 3;
+                        for (let i = 0; i < count; i++) {
+                            const angle = (Math.PI * 2 / count) * i;
+                            fallingHearts.push({
+                                x: bossX + Math.cos(angle) * (isHellfire ? 120 : 60),
+                                y: renderBossY + 40,
+                                vy: 4.5 + Math.random(),
+                                vx: Math.sin(angle) * (isHellfire ? 3 : 1.5),
+                                type: { emoji: '💔', points: -1, size: 28, speed: 4.5, isBroken: true },
+                                rotation: angle,
+                                rotSpeed: 0.2
+                            });
+                        }
+                        // Fire particles
+                        if (isHellfire) {
+                            for (let i = 0; i < 20; i++) {
+                                catchEffects.push({
+                                    x: bossX,
+                                    y: renderBossY,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: -Math.random() * 5,
+                                    life: 1.0,
+                                    color: ['#ff0000', '#ff4400', '#ff8800'][Math.floor(Math.random() * 3)],
+                                    size: 4
+                                });
+                            }
+                        }
+                    }
+                    // Teleport randomly
+                    if (Math.random() < 0.005) {
+                        bossX = gameW * 0.2 + Math.random() * gameW * 0.6;
+                        addCatchEffect(bossX, renderBossY, '💨', false);
+                    }
+                    // Chaos movement
+                    if (Math.random() < 0.02) bossDir *= -1;
+                    bossX += bossDir * 8;
+                    
+                } else if (ability === 'rebirth') {
+                    // Wave 9: Rebirth - Butterfly transformation
+                    if (Math.random() < attackChance) {
+                        // Butterflies that transform
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: 1.5,
+                            vx: (Math.random() - 0.5) * 3,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 1.5, isBroken: true },
+                            rotation: 0,
+                            rotSpeed: 0.1
+                        });
+                    }
+                    // Butterfly flutter effect
+                    fallingHearts.forEach(h => {
+                        h.vx += Math.sin(gameTime * 10 + h.y * 0.1) * 0.1;
+                        h.vy += Math.cos(gameTime * 10 + h.x * 0.1) * 0.05;
+                    });
+                    // Sparkle trail
+                    if (gameFrameCount % 5 === 0) {
+                        catchEffects.push({
+                            x: bossX + (Math.random() - 0.5) * 60,
+                            y: renderBossY + (Math.random() - 0.5) * 60,
+                            vx: 0,
+                            vy: -1,
+                            life: 1.0,
+                            color: '#06b6d4',
+                            size: 2,
+                            sparkle: true
+                        });
+                    }
+                    
+                } else if (ability === 'diamond') {
+                    // Wave 10: Diamond - Dazzling attacks
+                    if (Math.random() < attackChance) {
+                        // Diamond pattern
+                        const positions = [
+                            {x: 0, y: -60}, {x: 60, y: 0}, {x: 0, y: 60}, {x: -60, y: 0}
+                        ];
+                        positions.forEach(pos => {
+                            fallingHearts.push({
+                                x: bossX + pos.x,
+                                y: renderBossY + 40 + pos.y,
+                                vy: 3.0,
+                                vx: pos.x * 0.02,
+                                type: { emoji: '💔', points: -1, size: 28, speed: 3.0, isBroken: true },
+                                rotation: 0,
+                                rotSpeed: 0.1
+                            });
+                        });
+                    }
+                    // Dazzle effect
+                    if (gameFrameCount % 3 === 0) {
+                        catchEffects.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + (Math.random() - 0.5) * 80,
+                            vx: 0,
+                            vy: 0,
+                            life: 0.3,
+                            color: '#ffffff',
+                            size: 3,
+                            sparkle: true
+                        });
+                    }
+                    
+                } else if (ability === 'wedding') {
+                    // Wave 11: Wedding - Celebration attacks
+                    if (Math.random() < attackChance * 0.9) {
+                        // Confetti pattern
+                        for (let i = 0; i < 2; i++) {
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 120,
+                                y: renderBossY + 40,
+                                vy: 2.5 + Math.random(),
+                                vx: (Math.random() - 0.5) * 2,
+                                type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
+                                rotation: Math.random() * Math.PI * 2,
+                                rotSpeed: 0.15
+                            });
+                        }
+                    }
+                    // Confetti particles
+                    if (gameFrameCount % 10 === 0) {
+                        for (let i = 0; i < 5; i++) {
+                            catchEffects.push({
+                                x: bossX + (Math.random() - 0.5) * 100,
+                                y: renderBossY,
+                                vx: (Math.random() - 0.5) * 3,
+                                vy: -Math.random() * 2,
+                                life: 1.5,
+                                color: ['#ff4444', '#44ff44', '#4444ff', '#ffff44'][Math.floor(Math.random() * 4)],
+                                size: 3
+                            });
+                        }
+                    }
+                    
+                } else if (ability === 'eternal') {
+                    // Wave 12: Eternal - Cosmic chaos
+                    attackChance *= 3.5;
+                    const isCosmic = Math.random() < 0.025;
+                    if (Math.random() < attackChance || isCosmic) {
+                        const count = isCosmic ? 12 : 4;
+                        for (let i = 0; i < count; i++) {
+                            const angle = (Math.PI * 2 / count) * i + gameTime;
+                            const radius = isCosmic ? 150 : 80;
+                            fallingHearts.push({
+                                x: bossX + Math.cos(angle) * radius,
+                                y: renderBossY + 40 + Math.sin(angle) * (radius * 0.5),
+                                vy: 5.0 + Math.random(),
+                                vx: Math.sin(angle) * 2,
+                                type: { emoji: '💔', points: -1, size: 28, speed: 5.0, isBroken: true },
+                                rotation: angle,
+                                rotSpeed: 0.25
+                            });
+                        }
+                        // Cosmic particles
+                        if (isCosmic) {
+                            for (let i = 0; i < 30; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                catchEffects.push({
+                                    x: bossX,
+                                    y: renderBossY,
+                                    vx: Math.cos(angle) * (3 + Math.random() * 5),
+                                    vy: Math.sin(angle) * (3 + Math.random() * 5),
+                                    life: 1.5,
+                                    color: ['#a855f7', '#06b6d4', '#ffffff', '#fbbf24'][Math.floor(Math.random() * 4)],
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                        }
+                    }
+                    // Infinity movement
+                    bossX = gameW / 2 + Math.sin(gameTime * 2) * 150;
+                    // Time distortion effect
+                    if (Math.random() < 0.01) {
+                        damageFlash = 0.2;
+                    }
+                }
+                
                 gameCtx.restore();
             }
-
-            // Ability: Chaos (Mix of things)
-            if (ability === 'chaos') {
-                if (Math.random() < 0.01) bossDir *= -1; // Random direction flips
-                bossX += bossDir * 5;
+            
+            // Draw Boss HP Bar (Always visible, at top of screen)
+            if (bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
+                drawBossHPBar();
             }
-            gameCtx.restore(); // RESTORE boss-wide shake
+            
+            // Update boss projectiles (reflected hearts)
+            updateBossProjectiles();
         }
-        // Let's make the Boss drop "Bomb Hearts" that hurt, and "Star Hearts" that damage the boss?
-        // SIMPLER FOR NOW: Boss is a big falling heart in the catch loop. 
-        //WAIT - The plan said "Boss = large 💔 that moves side-to-side at top". 
-        // Let's stick to: Boss Dropping "Boss Parts" that you catch to damage it.
-
-        // Actually, to keep it simple and fun:
-        // The Boss ITSELF descends slowly. You have to "headbutt" (catch) it multiple times to push it back/damage and kill it.
-
-        // Overriding movement for "Descending Boss" mechanic:
-        // Boss logic comments
+        
+        // Helper function for smooth easing
+        function easeOutBounce(t) {
+            const n1 = 7.5625;
+            const d1 = 2.75;
+            if (t < 1 / d1) {
+                return n1 * t * t;
+            } else if (t < 2 / d1) {
+                return n1 * (t -= 1.5 / d1) * t + 0.75;
+            } else if (t < 2.5 / d1) {
+                return n1 * (t -= 2.25 / d1) * t + 0.9375;
+            } else {
+                return n1 * (t -= 2.625 / d1) * t + 0.984375;
+            }
+        }
+        
+        function drawBossHPBar() {
+            const bossConfig = WAVES[currentWave - 1]?.boss || { emoji: '💔', color: '#ff4444' };
+            const barWidth = gameW * 0.6;
+            const barHeight = 20;
+            const barX = (gameW - barWidth) / 2;
+            const barY = 20;
+            
+            gameCtx.save();
+            
+            // Background
+            gameCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            gameCtx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+            
+            // HP Bar background
+            gameCtx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            gameCtx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // HP Bar fill (color based on phase)
+            const hpPercent = bossHP / bossMaxHP;
+            let barColor = bossConfig.color;
+            if (bossPhase === 3) barColor = '#ff0000';
+            else if (bossPhase === 2) barColor = '#ff8800';
+            
+            const gradient = gameCtx.createLinearGradient(barX, 0, barX + barWidth * hpPercent, 0);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, adjustBrightness(barColor, -30));
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+            
+            // Pulsing effect for low HP
+            if (bossPhase === 3) {
+                const pulse = 0.5 + Math.sin(gameTime * 10) * 0.5;
+                gameCtx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.3})`;
+                gameCtx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+            }
+            
+            // Border
+            gameCtx.strokeStyle = '#ffffff';
+            gameCtx.lineWidth = 2;
+            gameCtx.strokeRect(barX, barY, barWidth, barHeight);
+            
+            // Boss name and HP text
+            gameCtx.font = 'bold 14px Montserrat';
+            gameCtx.fillStyle = '#ffffff';
+            gameCtx.textAlign = 'center';
+            gameCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            gameCtx.shadowBlur = 4;
+            gameCtx.fillText(`${bossConfig.emoji} BOSS ${bossConfig.emoji}`, gameW / 2, barY - 10);
+            gameCtx.fillText(`${bossHP} / ${bossMaxHP}`, gameW / 2, barY + barHeight / 2 + 5);
+            
+            gameCtx.restore();
+        }
+        
+        function adjustBrightness(color, amount) {
+            const hex = color.replace('#', '');
+            const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+            const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+            const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
 
 
 
@@ -1818,7 +3962,7 @@
             gameCtx.fillRect(0, 0, gameW, gameH);
         }
         if (effect === 'rain') {
-            // Rainy Vignette (Blue/Gray)
+            // Rainy Vignette (Blue/Gray) - Boss 1 Atmosphere
             const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.2, centerX, centerY, gameW * 0.9);
             gradient.addColorStop(0, 'rgba(100, 120, 140, 0.0)');
             gradient.addColorStop(1, 'rgba(80, 100, 130, 0.25)'); // Darker edge
@@ -1836,6 +3980,157 @@
                 gameCtx.lineTo(rx - 8, ry + 25);
             }
             gameCtx.stroke();
+        } else if (effect === 'fire') {
+            // Fire Atmosphere - Boss 2: Bottom of screen glows red
+            const gradient = gameCtx.createLinearGradient(0, gameH * 0.5, 0, gameH);
+            gradient.addColorStop(0, 'rgba(255, 50, 0, 0.0)');
+            gradient.addColorStop(0.5, 'rgba(255, 80, 0, 0.2)');
+            gradient.addColorStop(1, 'rgba(255, 100, 0, 0.4)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Heat distortion effect (subtle wave)
+            if (gameFrameCount % 3 === 0) {
+                gameCtx.fillStyle = 'rgba(255, 150, 0, 0.05)';
+                const waveY = gameH * 0.7 + Math.sin(gameTime * 5) * 20;
+                gameCtx.fillRect(0, waveY, gameW, 50);
+            }
+        } else if (effect === 'ice') {
+            // Ice Atmosphere - Boss 3: Screen freezes, blue tint
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.2, centerX, centerY, gameW * 0.9);
+            gradient.addColorStop(0, 'rgba(100, 200, 255, 0.0)');
+            gradient.addColorStop(1, 'rgba(100, 200, 255, 0.3)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Ice crystals floating
+            if (gameFrameCount % 5 === 0) {
+                for (let i = 0; i < 3; i++) {
+                    const x = Math.random() * gameW;
+                    const y = Math.random() * gameH;
+                    gameCtx.fillStyle = 'rgba(200, 230, 255, 0.4)';
+                    gameCtx.beginPath();
+                    gameCtx.arc(x, y, 2, 0, Math.PI * 2);
+                    gameCtx.fill();
+                }
+            }
+        } else if (effect === 'wind') {
+            // Wind Atmosphere - Boss 4: Strong wind visual
+            const gradient = gameCtx.createLinearGradient(0, 0, gameW, 0);
+            gradient.addColorStop(0, 'rgba(200, 200, 200, 0.1)');
+            gradient.addColorStop(0.5, 'rgba(220, 220, 220, 0.2)');
+            gradient.addColorStop(1, 'rgba(200, 200, 200, 0.1)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Wind lines
+            if (gameFrameCount % 2 === 0) {
+                gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                gameCtx.lineWidth = 2;
+                for (let i = 0; i < 5; i++) {
+                    const y = Math.random() * gameH;
+                    const offset = Math.sin(gameTime * 3 + i) * 50;
+                    gameCtx.beginPath();
+                    gameCtx.moveTo(offset, y);
+                    gameCtx.lineTo(offset + 100, y);
+                    gameCtx.stroke();
+                }
+            }
+        } else if (effect === 'mirror') {
+            // Mirror Atmosphere - Boss 5: Split screen effect
+            gameCtx.save();
+            gameCtx.strokeStyle = 'rgba(200, 200, 255, 0.4)';
+            gameCtx.lineWidth = 3;
+            gameCtx.beginPath();
+            gameCtx.moveTo(centerX, 0);
+            gameCtx.lineTo(centerX, gameH);
+            gameCtx.stroke();
+            
+            // Mirror shimmer
+            const gradient = gameCtx.createLinearGradient(centerX - 50, 0, centerX + 50, 0);
+            gradient.addColorStop(0, 'rgba(200, 200, 255, 0.0)');
+            gradient.addColorStop(0.5, 'rgba(220, 220, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(200, 200, 255, 0.0)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(centerX - 50, 0, 100, gameH);
+            gameCtx.restore();
+        } else if (effect === 'fog') {
+            // Fog handled by bossController.drawFogEffect()
+            // Just add ambient fog tint
+            gameCtx.fillStyle = 'rgba(100, 100, 100, 0.2)';
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        } else if (effect === 'wall') {
+            // Wall atmosphere - darker, oppressive
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.1, centerX, centerY, gameW * 0.9);
+            gradient.addColorStop(0, 'rgba(50, 50, 50, 0.0)');
+            gradient.addColorStop(1, 'rgba(30, 30, 30, 0.4)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        } else if (effect === 'poison') {
+            // Poison Atmosphere - Boss 8: Purple toxic haze
+            const gradient = gameCtx.createRadialGradient(centerX, gameH, gameW * 0.3, centerX, gameH, gameW * 1.2);
+            gradient.addColorStop(0, 'rgba(150, 0, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(100, 0, 200, 0.1)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Poison bubbles
+            if (gameFrameCount % 4 === 0) {
+                for (let i = 0; i < 2; i++) {
+                    const x = Math.random() * gameW;
+                    const y = gameH - Math.random() * 100;
+                    gameCtx.fillStyle = 'rgba(150, 0, 255, 0.3)';
+                    gameCtx.beginPath();
+                    gameCtx.arc(x, y, 3, 0, Math.PI * 2);
+                    gameCtx.fill();
+                }
+            }
+        } else if (effect === 'glitch') {
+            // Glitch handled by bossController.drawGlitchEffect()
+            // Just add base corruption
+            if (Math.random() < 0.1) {
+                gameCtx.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.1)`;
+                gameCtx.fillRect(Math.random() * gameW, Math.random() * gameH, 100, 100);
+            }
+        } else if (effect === 'time') {
+            // Time Atmosphere - Boss 10: Black and white with clock overlay
+            gameCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Clock face overlay
+            gameCtx.save();
+            gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            gameCtx.lineWidth = 2;
+            gameCtx.beginPath();
+            gameCtx.arc(centerX, centerY, 100, 0, Math.PI * 2);
+            gameCtx.stroke();
+            
+            // Clock hands
+            gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            gameCtx.lineWidth = 3;
+            gameCtx.beginPath();
+            gameCtx.moveTo(centerX, centerY);
+            gameCtx.lineTo(centerX + Math.cos(gameTime * 2) * 60, centerY + Math.sin(gameTime * 2) * 60);
+            gameCtx.stroke();
+            gameCtx.restore();
+        } else if (effect === 'grayscale') {
+            // Grayscale handled by bossController.applyGrayscaleFilter()
+            // Just add gray overlay
+            gameCtx.fillStyle = 'rgba(128, 128, 128, 0.3)';
+            gameCtx.fillRect(0, 0, gameW, gameH);
+        } else if (effect === 'darkness') {
+            // Darkness Atmosphere - Boss 12: Very dark, ominous
+            const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.1, centerX, centerY, gameW * 1.2);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0.0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+            gameCtx.fillStyle = gradient;
+            gameCtx.fillRect(0, 0, gameW, gameH);
+            
+            // Red lightning flashes
+            if (Math.random() < 0.03) {
+                gameCtx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                gameCtx.fillRect(0, 0, gameW, gameH);
+            }
         } else if (effect === 'gold_rays') {
             // Golden Vignette
             const gradient = gameCtx.createRadialGradient(centerX, centerY, gameW * 0.1, centerX, centerY, gameW * 0.8);
@@ -1890,12 +4185,33 @@
         bernaX += bernaDir * bernaSpeed;
         if (bernaX > gameW - BERNA_SPRITE_SIZE / 2) bernaDir = -1;
         if (bernaX < BERNA_SPRITE_SIZE / 2) bernaDir = 1;
+        
+        // Calculate Berna Y base position (used for both rendering and heart spawning)
+        const bernaYBase = gameH < 500 ? Math.min(20, gameH * 0.05) : 20; // Lower in landscape
 
         // Apply DOM transforms for Berna (GIF support + Performance)
         if (bernaEl) {
+            // Boss fight: Keep Berna visible but slightly faded
+            if (bossActive) {
+                // Keep Berna visible during boss fight (she throws special hearts!)
+                let bernaOpacity = 0.7; // Slightly faded but visible
+                if (bossIntroTimer > 0) {
+                    // Fade to 0.7 during intro (2 seconds)
+                    bernaOpacity = 1 - ((1 - 0.7) * (1 - bossIntroTimer / 2.0));
+                } else if (bossDefeatedTimer > 0) {
+                    // Fade back to full during death animation (3 seconds)
+                    bernaOpacity = 0.7 + (0.3 * (1 - bossDefeatedTimer / 3.0));
+                }
+                bernaEl.style.opacity = bernaOpacity;
+                bernaEl.style.transition = 'opacity 0.5s ease';
+            } else {
+                // Normal gameplay: Fully visible
+                bernaEl.style.opacity = 1;
+            }
+            
             // 1. Floating bounce
             const floatOffset = Math.sin(gameTime * 2) * 8;
-            const bernaY = 20 + floatOffset;
+            const bernaY = bernaYBase + floatOffset;
 
             // 2. Perspective tilt
             const rotationAngle = bernaDir * 5; // degrees
@@ -1944,31 +4260,72 @@
            (Previous code for drawImage(bernaImg) deleted)
         */
 
-        // Spawn hearts from Berna (Suppressed during boss fight)
-        if (!waveTransitioning && !bossActive && Math.random() < config.spawnRate) {
-            const heartTypes = getHeartTypes(currentWave, gameLives);
-            const totalWeight = heartTypes.reduce((s, t) => s + t.weight, 0);
-            let r = Math.random() * totalWeight;
-            let type = heartTypes[0];
-            for (const t of heartTypes) {
-                r -= t.weight;
-                if (r <= 0) { type = t; break; }
+        // Spawn hearts from Berna
+        if (!waveTransitioning) {
+            let shouldSpawn = false;
+            let spawnChance = config.spawnRate;
+            
+            // During boss fight: Much rarer special heart spawns
+            if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
+                // Special hearts are rare - only 30% of normal spawn rate (increased from 20%)
+                // AND have a 2 second cooldown to prevent multiple spawns
+                const now = Date.now();
+                if (now - bernaLastSpecialHeartTime >= 2000) { // 2 second cooldown
+                    spawnChance = config.spawnRate * 0.3;
+                    shouldSpawn = Math.random() < spawnChance;
+                    if (shouldSpawn) {
+                        bernaLastSpecialHeartTime = now;
+                    }
+                }
+            } else {
+                // Normal gameplay: Regular spawn rate
+                shouldSpawn = Math.random() < spawnChance;
             }
+            
+            if (shouldSpawn) {
+                let type;
+                
+                // During boss fight: Only spawn special hearts from Berna
+                if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
+                    // Berna throws special hearts during boss fight (RARE!)
+                    const bossConfig = WAVES[currentWave - 1]?.boss || {};
+                    const specialHeart = bossConfig.specialHeart || { emoji: '⭐', name: 'Özel Kalp', damage: 1 };
+                    
+                    type = {
+                        emoji: specialHeart.emoji,
+                        points: 50,
+                        size: 32,
+                        speed: 2.5,
+                        isBossWeakness: true,
+                        bossDamage: specialHeart.damage
+                    };
+                } else {
+                    // Normal gameplay: Regular hearts
+                    const heartTypes = getHeartTypes(currentWave, gameLives);
+                    const totalWeight = heartTypes.reduce((s, t) => s + t.weight, 0);
+                    let r = Math.random() * totalWeight;
+                    type = heartTypes[0];
+                    for (const t of heartTypes) {
+                        r -= t.weight;
+                        if (r <= 0) { type = t; break; }
+                    }
 
-            // Love Blast Transmutation: If active, new broken hearts become normal hearts
-            if (loveBlastActive && type.isBroken) {
-                type = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
+                    // Love Blast Transmutation: If active, new broken hearts become normal hearts
+                    if (loveBlastActive && type.isBroken) {
+                        type = { emoji: '❤️', points: 10, size: 28, speed: 2.5, weight: 50 };
+                    }
+                }
+
+                fallingHearts.push({
+                    x: bernaX + (Math.random() - 0.5) * 40,
+                    y: bernaYBase + BERNA_SPRITE_SIZE,
+                    vy: type.speed * speedMul * (0.8 + Math.random() * 0.4),
+                    vx: (Math.random() - 0.5) * 0.8,
+                    type: type,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.05
+                });
             }
-
-            fallingHearts.push({
-                x: bernaX + (Math.random() - 0.5) * 40,
-                y: 20 + BERNA_SPRITE_SIZE,
-                vy: type.speed * speedMul * (0.8 + Math.random() * 0.4),
-                vx: (Math.random() - 0.5) * 0.8,
-                type: type,
-                rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.05
-            });
         }
 
         // Spawn power-ups (rare, suppressed during boss fight)
@@ -1985,9 +4342,15 @@
         }
 
         // Update & draw falling hearts
-        const burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        // burakTop already defined earlier for boss abilities
         for (let i = fallingHearts.length - 1; i >= 0; i--) {
             const h = fallingHearts[i];
+            
+            // Safety check - skip if heart is undefined or missing required properties
+            if (!h || h.x === undefined || h.y === undefined || h.vx === undefined || h.vy === undefined) {
+                fallingHearts.splice(i, 1);
+                continue;
+            }
 
             // Wind & Wobble effects
             if (config.wind) {
@@ -1998,7 +4361,7 @@
             }
 
             // Magnet effect (attract good hearts)
-            if (magnetActive && !h.type.isBroken) {
+            if (magnetActive && h.type && !h.type.isBroken) {
                 const dx = burakX - h.x;
                 const dy = burakTop - h.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2008,14 +4371,38 @@
                 }
             }
 
+            // Precision effect (auto-aim all good hearts)
+            if (precisionActive && h.type && !h.type.isBroken) {
+                const dx = burakX - h.x;
+                const dy = burakTop - h.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 10) {
+                    h.vx += (dx / dist) * 0.4;
+                    h.vy += (dy / dist) * 0.2;
+                }
+            }
+
             h.y += h.vy;
             h.x += h.vx + Math.sin(gameTime * 2 + i) * 0.3;
             h.x = Math.max(15, Math.min(gameW - 15, h.x));
             h.rotation += h.rotSpeed;
 
-            // Catch check
+            // Catch check - skip if no type defined
+            if (!h.type) {
+                fallingHearts.splice(i, 1);
+                continue;
+            }
+            
             if (h.y > burakTop - 40 && h.y < burakTop + 60 && // Widened collision
                 Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
+
+                // Rain drops (Boss 1) - Don't damage, just slow
+                if (h.type.isRain) {
+                    // Rain drop caught - no damage, just visual feedback
+                    addCatchEffect(h.x, burakTop, '💧', false);
+                    fallingHearts.splice(i, 1);
+                    continue;
+                }
 
                 if (h.type.isBroken) {
                     if (invulnerableTimer > 0) {
@@ -2025,6 +4412,11 @@
                         // Take damage
                         takeDamage();
                         addCatchEffect(h.x, burakTop, '-💔', false);
+                        // Achievement tracking
+                        if (achievementSystem) {
+                            achievementSystem.incrementStat('brokenHeartsCaught');
+                            achievementSystem.stats.currentWaveDamage++;
+                        }
                         gameConsecutiveCatches = 0;
                         gameCombo = 1;
 
@@ -2043,14 +4435,21 @@
                     else gameCombo = 1;
 
                     if (gameCombo > longestCombo) longestCombo = gameCombo;
+                    
+                    // Update achievement stats
+                    if (achievementSystem) {
+                        achievementSystem.incrementStat('totalHeartsCaught');
+                        achievementSystem.updateStat('longestCombo', longestCombo);
+                    }
 
                     // Combo change notification
                     if (gameCombo > prevCombo) {
                         addCatchEffect(gameW / 2, gameH / 2 - 40, 'x' + gameCombo + '! 🔥', true);
                         playSound('combo');
+                        HapticFeedback.combo();
                     }
 
-                    const earned = h.type.points * gameCombo;
+                    const earned = h.type.points * gameCombo * (doublePointsActive ? 2 : 1);
                     gameScore += earned;
                     waveScoreEarned += earned; // Track progress towards boss
                     if (gameScoreEl) gameScoreEl.textContent = gameScore;
@@ -2082,19 +4481,603 @@
                         playSound('diamond');
                         // Screen flash
                         damageFlash = 0.5; // Repurpose for white flash
+                        // Achievement tracking
+                        if (achievementSystem) {
+                            achievementSystem.incrementStat('diamondHeartsCaught');
+                        }
                     } else if (h.type.isLife) {
                         gameLives = Math.min(5, gameLives + 1);
                         updateLivesDisplay();
                         addCatchEffect(h.x, burakTop, '+1 ❤️', true);
                         playSound('diamond');
+                    } else if (h.type.isBossWeakness) {
+                        // Boss special heart caught - damage boss with UNIQUE EFFECTS per boss!
+                        const damage = h.type.bossDamage || 1;
+                        const bossConfig = WAVES[currentWave - 1]?.boss || {};
+                        const ability = bossConfig.ability;
+                        
+                        addCatchEffect(h.x, burakTop, `${h.type.emoji || '⭐'} BOSS HASAR!`, true);
+                        playSound('bosshit');
+                        damageBoss(damage, 'weakness');
+                        
+                        // UNIQUE EFFECTS PER BOSS
+                        if (ability === 'doubt_cloud') {
+                            // Boss 1: Şemsiye (Umbrella) - Removes slow debuff, shoots light beam at boss
+                            bossController.slowDebuff = 1.0; // Remove slow
+                            addCatchEffect(burakX, burakTop - 30, '☂️ Hız Normale Döndü!', true);
+                            
+                            // Powerful light beam effect from player to boss (AUTOMATIC!)
+                            // Create a thick beam with multiple particles
+                            for (let i = 0; i < 30; i++) {
+                                const t = i / 30;
+                                const beamX = burakX + (bossX - burakX) * t;
+                                const beamY = burakTop + (bossY - burakTop) * t;
+                                
+                                catchEffects.push({
+                                    x: beamX,
+                                    y: beamY,
+                                    vx: (Math.random() - 0.5) * 1,
+                                    vy: (Math.random() - 0.5) * 1,
+                                    life: 1.5,
+                                    color: ['#ffeb3b', '#fff', '#ffd700'][Math.floor(Math.random() * 3)],
+                                    size: 5,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Explosion at boss position
+                            for (let i = 0; i < 15; i++) {
+                                const angle = (Math.PI * 2 / 15) * i;
+                                catchEffects.push({
+                                    x: bossX,
+                                    y: bossY,
+                                    vx: Math.cos(angle) * 6,
+                                    vy: Math.sin(angle) * 6,
+                                    life: 1.2,
+                                    color: '#ffeb3b',
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.6;
+                            
+                        } else if (ability === 'rage_flame') {
+                            // Boss 2: Su Balonu (Water Balloon) - Extinguishes boss, removes lava bombs
+                            bossController.lavaBombs = []; // Clear all lava bombs
+                            addCatchEffect(burakX, burakTop - 30, '💧 Ateş Söndürüldü!', true);
+                            
+                            // Water splash effect
+                            for (let i = 0; i < 20; i++) {
+                                const angle = (Math.PI * 2 / 20) * i;
+                                catchEffects.push({
+                                    x: bossX,
+                                    y: bossY,
+                                    vx: Math.cos(angle) * 5,
+                                    vy: Math.sin(angle) * 5,
+                                    life: 1.2,
+                                    color: '#06b6d4',
+                                    size: 4
+                                });
+                            }
+                            
+                            // Steam particles
+                            for (let i = 0; i < 10; i++) {
+                                catchEffects.push({
+                                    x: bossX + (Math.random() - 0.5) * 80,
+                                    y: bossY + (Math.random() - 0.5) * 80,
+                                    vx: (Math.random() - 0.5) * 1,
+                                    vy: -Math.random() * 3,
+                                    life: 1.5,
+                                    color: '#ffffff',
+                                    size: 3
+                                });
+                            }
+                            
+                        } else if (ability === 'cold_distance') {
+                            // Boss 3: Sıcak Çay (Hot Tea) - Breaks ice, unfreezes player
+                            bossController.playerFrozen = false; // Unfreeze
+                            bossController.freezeTimer = 0;
+                            addCatchEffect(burakX, burakTop - 30, '☕ Buzlar Kırıldı!', true);
+                            
+                            // Ice breaking effect
+                            for (let i = 0; i < 25; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                catchEffects.push({
+                                    x: burakX + (Math.random() - 0.5) * 60,
+                                    y: burakTop + (Math.random() - 0.5) * 60,
+                                    vx: Math.cos(angle) * 4,
+                                    vy: Math.sin(angle) * 4 - 2,
+                                    life: 1.0,
+                                    color: '#06b6d4',
+                                    size: 3
+                                });
+                            }
+                            
+                            // Warm steam
+                            for (let i = 0; i < 10; i++) {
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: (Math.random() - 0.5) * 2,
+                                    vy: -Math.random() * 4,
+                                    life: 1.5,
+                                    color: '#ffffff',
+                                    size: 2
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.4;
+                            
+                        } else if (ability === 'windy_day') {
+                            // Boss 4: Kinetik Enerji (Kinetic Energy) - Boss loses wind power
+                            // Wind effect is already in bossController, just visual feedback
+                            addCatchEffect(burakX, burakTop - 30, '⚡ Rüzgar Durdu!', true);
+                            
+                            // Lightning burst effect
+                            for (let i = 0; i < 20; i++) {
+                                const angle = (Math.PI * 2 / 20) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 7,
+                                    vy: Math.sin(angle) * 7,
+                                    life: 1.0,
+                                    color: '#ffeb3b',
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Energy waves to boss
+                            for (let i = 0; i < 15; i++) {
+                                const t = i / 15;
+                                catchEffects.push({
+                                    x: burakX + (bossX - burakX) * t,
+                                    y: burakTop + (bossY - burakTop) * t,
+                                    vx: (Math.random() - 0.5) * 2,
+                                    vy: (Math.random() - 0.5) * 2,
+                                    life: 1.2,
+                                    color: ['#ffeb3b', '#fff'][Math.floor(Math.random() * 2)],
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.5;
+                            
+                        } else if (ability === 'jealousy_mirror') {
+                            // Boss 5: Gerçeklik Gözlüğü (Reality Glasses) - Fixes inverted controls
+                            bossController.disableJealousyMirror();
+                            addCatchEffect(burakX, burakTop - 30, '👓 Kontroller Düzeldi!', true);
+                            
+                            // Mirror shatter effect
+                            for (let i = 0; i < 25; i++) {
+                                catchEffects.push({
+                                    x: gameW / 2,
+                                    y: gameH / 2,
+                                    vx: (Math.random() - 0.5) * 15,
+                                    vy: (Math.random() - 0.5) * 15,
+                                    life: 1.5,
+                                    color: ['#fff', '#ccc', '#aaa'][Math.floor(Math.random() * 3)],
+                                    size: 6,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.6;
+                            
+                        } else if (ability === 'fog_forgetting') {
+                            // Boss 6: Fener (Flashlight) - Clears fog
+                            bossController.disableFogForgetting();
+                            addCatchEffect(burakX, burakTop - 30, '🔦 Sis Dağıldı!', true);
+                            
+                            // Light rays spreading out
+                            for (let i = 0; i < 30; i++) {
+                                const angle = (Math.PI * 2 / 30) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 10,
+                                    vy: Math.sin(angle) * 10,
+                                    life: 1.8,
+                                    color: ['#ffeb3b', '#fff', '#ffd700'][Math.floor(Math.random() * 3)],
+                                    size: 5,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.5;
+                            
+                        } else if (ability === 'ego_wall') {
+                            // Boss 7: Çekiç (Hammer) - Breaks wall
+                            bossController.disableEgoWall();
+                            addCatchEffect(burakX, burakTop - 30, '🔨 Duvar Yıkıldı!', true);
+                            
+                            // Wall debris explosion
+                            for (let i = 0; i < 35; i++) {
+                                catchEffects.push({
+                                    x: bossX,
+                                    y: bossY,
+                                    vx: (Math.random() - 0.5) * 12,
+                                    vy: (Math.random() - 0.5) * 12,
+                                    life: 1.5,
+                                    color: ['#888', '#666', '#555'][Math.floor(Math.random() * 3)],
+                                    size: 7,
+                                    sparkle: false
+                                });
+                            }
+                            
+                            // Screen shake
+                            bossHitFlash = 15;
+                            damageFlash = 0.4;
+                            
+                        } else if (ability === 'gossip_snake') {
+                            // Boss 8: Kulaklık (Headphones) - Blocks whispers, poison stops
+                            addCatchEffect(burakX, burakTop - 30, '🎧 Fısıltılar Kesildi!', true);
+                            
+                            // Sound wave effect
+                            for (let i = 0; i < 20; i++) {
+                                const angle = (Math.PI * 2 / 20) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 6,
+                                    vy: Math.sin(angle) * 6,
+                                    life: 1.3,
+                                    color: ['#9c27b0', '#e91e63'][Math.floor(Math.random() * 2)],
+                                    size: 5,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Clear all poison zones
+                            bossController.poisonZones = [];
+                            
+                        } else if (ability === 'glitch') {
+                            // Boss 9: Reset Tuşu (Reset Button) - Fixes glitch
+                            bossController.disableGlitch();
+                            addCatchEffect(burakX, burakTop - 30, '🔄 Sistem Düzeldi!', true);
+                            
+                            // Digital particles
+                            for (let i = 0; i < 40; i++) {
+                                catchEffects.push({
+                                    x: Math.random() * gameW,
+                                    y: Math.random() * gameH,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: (Math.random() - 0.5) * 8,
+                                    life: 1.0,
+                                    color: ['#00ff00', '#00ffff', '#ff00ff'][Math.floor(Math.random() * 3)],
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.7;
+                            
+                        } else if (ability === 'time_thief') {
+                            // Boss 10: Saat Pili (Battery) - Restores time
+                            bossController.timeScale = 1.0;
+                            addCatchEffect(burakX, burakTop - 30, '🔋 Zaman Normale Döndü!', true);
+                            
+                            // Clock particles
+                            for (let i = 0; i < 25; i++) {
+                                const angle = (Math.PI * 2 / 25) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 8,
+                                    vy: Math.sin(angle) * 8,
+                                    life: 1.5,
+                                    color: ['#2196f3', '#03a9f4', '#00bcd4'][Math.floor(Math.random() * 3)],
+                                    size: 5,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.5;
+                            
+                        } else if (ability === 'routine') {
+                            // Boss 11: Gökkuşağı Boyası (Rainbow Paint) - Restores colors
+                            bossController.disableRoutine();
+                            addCatchEffect(burakX, burakTop - 30, '🌈 Renkler Geri Döndü!', true);
+                            
+                            // Rainbow explosion
+                            const rainbowColors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3'];
+                            for (let i = 0; i < 50; i++) {
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: (Math.random() - 0.5) * 12,
+                                    vy: (Math.random() - 0.5) * 12,
+                                    life: 2.0,
+                                    color: rainbowColors[Math.floor(Math.random() * rainbowColors.length)],
+                                    size: 6,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 0.8;
+                            
+                        } else if (ability === 'dark_reflection') {
+                            // Boss 12: Final Boss - Special heart damages boss directly
+                            addCatchEffect(burakX, burakTop - 30, '💖 AŞK GÜCÜ!', true);
+                            
+                            // Massive love explosion
+                            for (let i = 0; i < 60; i++) {
+                                const angle = (Math.PI * 2 / 60) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 15,
+                                    vy: Math.sin(angle) * 15,
+                                    life: 2.5,
+                                    color: ['#ff1744', '#f50057', '#ff4081', '#ff80ab'][Math.floor(Math.random() * 4)],
+                                    size: 8,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Love beam to boss
+                            for (let i = 0; i < 40; i++) {
+                                const t = i / 40;
+                                catchEffects.push({
+                                    x: burakX + (bossX - burakX) * t,
+                                    y: burakTop + (bossY - burakTop) * t,
+                                    vx: (Math.random() - 0.5) * 3,
+                                    vy: (Math.random() - 0.5) * 3,
+                                    life: 2.0,
+                                    color: ['#ff1744', '#fff'][Math.floor(Math.random() * 2)],
+                                    size: 7,
+                                    sparkle: true
+                                });
+                            }
+                            
+                            // Screen flash
+                            damageFlash = 1.0;
+                            
+                        } else if (ability === 'shy') {
+                            // Boss 1: Hediye - Bonus puan
+                            gameScore += 100;
+                            if (gameScoreEl) gameScoreEl.textContent = gameScore;
+                            addCatchEffect(burakX, burakTop - 30, '+100 Bonus!', true);
+                            
+                        } else if (ability === 'excited') {
+                            // Boss 2: Aşk Oku - Hız artışı
+                            for (let i = 0; i < 5; i++) {
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: -Math.random() * 5,
+                                    life: 1.0,
+                                    color: '#ff4444',
+                                    size: 4,
+                                    sparkle: true
+                                });
+                            }
+                            addCatchEffect(burakX, burakTop - 30, '💨 Hız!', true);
+                            
+                        } else if (ability === 'dreamy') {
+                            // Boss 3: Pembe Bulut - Yavaşlatma efekti
+                            slowMoActive = true;
+                            slowMoTimer = 3;
+                            addCatchEffect(burakX, burakTop - 30, '⏳ Yavaşla!', true);
+                            
+                        } else if (ability === 'calm') {
+                            // Boss 4: Beyaz Güvercin - Kalkan
+                            shieldActive = true;
+                            shieldTimer = 5;
+                            addCatchEffect(burakX, burakTop - 30, '🛡️ Kalkan!', true);
+                            
+                        } else if (ability === 'angry') {
+                            // Boss 5: Patlama - Ekrandaki tüm kırık kalpleri temizle
+                            let cleared = 0;
+                            for (let i = fallingHearts.length - 1; i >= 0; i--) {
+                                if (fallingHearts[i].type.isBroken) {
+                                    fallingHearts.splice(i, 1);
+                                    cleared++;
+                                }
+                            }
+                            if (cleared > 0) {
+                                addCatchEffect(burakX, burakTop - 30, `💥 ${cleared} Temizlendi!`, true);
+                            }
+                            // Explosion effect
+                            for (let i = 0; i < 15; i++) {
+                                const angle = (Math.PI * 2 / 15) * i;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * 6,
+                                    vy: Math.sin(angle) * 6,
+                                    life: 0.8,
+                                    color: '#ff0000',
+                                    size: 4
+                                });
+                            }
+                            
+                        } else if (ability === 'healing') {
+                            // Boss 6: Işık - Can yenileme
+                            gameLives = Math.min(5, gameLives + 1);
+                            updateLivesDisplay();
+                            addCatchEffect(burakX, burakTop - 30, '❤️ +1 Can!', true);
+                            // Light burst
+                            for (let i = 0; i < 12; i++) {
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: (Math.random() - 0.5) * 5,
+                                    vy: -Math.random() * 4,
+                                    life: 1.2,
+                                    color: '#fbbf24',
+                                    size: 3,
+                                    sparkle: true
+                                });
+                            }
+                            
+                        } else if (ability === 'jealous') {
+                            // Boss 7: Karanlık Kalp - Tüm kalpleri çek
+                            magnetActive = true;
+                            magnetTimer = 5;
+                            addCatchEffect(burakX, burakTop - 30, '🧲 Mıknatıs!', true);
+                            // Dark particles
+                            for (let i = 0; i < 10; i++) {
+                                catchEffects.push({
+                                    x: burakX + (Math.random() - 0.5) * 100,
+                                    y: burakTop + (Math.random() - 0.5) * 100,
+                                    vx: 0,
+                                    vy: -2,
+                                    life: 1.0,
+                                    color: '#7c3aed',
+                                    size: 3
+                                });
+                            }
+                            
+                        } else if (ability === 'demon') {
+                            // Boss 8: Cehennem Ateşi - Çift puan + Kombo koruma
+                            doublePointsActive = true;
+                            doublePointsTimer = 8;
+                            streakProtectActive = true;
+                            streakProtectTimer = 8;
+                            addCatchEffect(burakX, burakTop - 30, '💫🔥 SÜPER GÜÇ!', true);
+                            // Fire explosion
+                            for (let i = 0; i < 20; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * (3 + Math.random() * 5),
+                                    vy: Math.sin(angle) * (3 + Math.random() * 5),
+                                    life: 1.5,
+                                    color: ['#ff0000', '#ff4400', '#ff8800'][Math.floor(Math.random() * 3)],
+                                    size: 5
+                                });
+                            }
+                            
+                        } else if (ability === 'rebirth') {
+                            // Boss 9: Yıldız Tozu - Tüm güç-up'ları aktifleştir
+                            shieldActive = true;
+                            shieldTimer = 4;
+                            magnetActive = true;
+                            magnetTimer = 4;
+                            addCatchEffect(burakX, burakTop - 30, '🌟 Yeniden Doğuş!', true);
+                            // Butterfly particles
+                            for (let i = 0; i < 15; i++) {
+                                catchEffects.push({
+                                    x: burakX + (Math.random() - 0.5) * 80,
+                                    y: burakTop + (Math.random() - 0.5) * 80,
+                                    vx: (Math.random() - 0.5) * 4,
+                                    vy: -Math.random() * 3,
+                                    life: 1.5,
+                                    color: '#06b6d4',
+                                    size: 3,
+                                    sparkle: true
+                                });
+                            }
+                            
+                        } else if (ability === 'diamond') {
+                            // Boss 10: Yüzük - Şimşek efekti (tüm kalpleri topla)
+                            let collected = 0;
+                            for (let i = fallingHearts.length - 1; i >= 0; i--) {
+                                const heart = fallingHearts[i];
+                                if (!heart.type.isBroken) {
+                                    const earnedPoints = heart.type.points * gameCombo;
+                                    gameScore += earnedPoints;
+                                    waveScoreEarned += earnedPoints;
+                                    totalHeartsCaught++;
+                                    collected++;
+                                    fallingHearts.splice(i, 1);
+                                }
+                            }
+                            if (collected > 0) {
+                                addCatchEffect(burakX, burakTop - 30, `💍 ${collected} Kalp!`, true);
+                                if (gameScoreEl) gameScoreEl.textContent = gameScore;
+                            }
+                            // Diamond sparkles
+                            for (let i = 0; i < 25; i++) {
+                                catchEffects.push({
+                                    x: burakX + (Math.random() - 0.5) * 120,
+                                    y: burakTop + (Math.random() - 0.5) * 120,
+                                    vx: 0,
+                                    vy: -Math.random() * 2,
+                                    life: 1.0,
+                                    color: '#ffffff',
+                                    size: 2,
+                                    sparkle: true
+                                });
+                            }
+                            
+                        } else if (ability === 'wedding') {
+                            // Boss 11: Kutlama - Kombo artışı
+                            gameCombo = Math.min(gameCombo + 2, 10);
+                            if (gameComboEl) gameComboEl.textContent = 'x' + gameCombo;
+                            addCatchEffect(burakX, burakTop - 30, '🎊 Kombo +2!', true);
+                            // Confetti explosion
+                            for (let i = 0; i < 30; i++) {
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: -Math.random() * 6,
+                                    life: 2.0,
+                                    color: ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff'][Math.floor(Math.random() * 5)],
+                                    size: 3
+                                });
+                            }
+                            
+                        } else if (ability === 'eternal') {
+                            // Boss 12: Sonsuzluk - TÜM GÜÇ-UP'LAR + Bonus
+                            shieldActive = true;
+                            shieldTimer = 10;
+                            magnetActive = true;
+                            magnetTimer = 10;
+                            doublePointsActive = true;
+                            doublePointsTimer = 10;
+                            streakProtectActive = true;
+                            streakProtectTimer = 10;
+                            precisionActive = true;
+                            precisionTimer = 10;
+                            gameScore += 500;
+                            if (gameScoreEl) gameScoreEl.textContent = gameScore;
+                            addCatchEffect(burakX, burakTop - 30, '♾️ SONSUZ GÜÇ!', true);
+                            // Cosmic explosion
+                            for (let i = 0; i < 50; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                catchEffects.push({
+                                    x: burakX,
+                                    y: burakTop,
+                                    vx: Math.cos(angle) * (5 + Math.random() * 8),
+                                    vy: Math.sin(angle) * (5 + Math.random() * 8),
+                                    life: 2.0,
+                                    color: ['#a855f7', '#06b6d4', '#ffffff', '#fbbf24', '#ff4444'][Math.floor(Math.random() * 5)],
+                                    size: 5,
+                                    sparkle: true
+                                });
+                            }
+                        }
+                        
+                        // Extra visual feedback
+                        damageFlash = 0.3;
                     } else {
                         addCatchEffect(h.x, burakTop, earned, true);
                         playSound('catch');
                     }
 
                     // Haptic feedback on catch
-                    if (navigator.vibrate && h.type.isBroken) {
-                        navigator.vibrate(50); // Short buzz for broken hearts
+                    if (h.type.isDiamond || h.type.isGold) {
+                        HapticFeedback.diamondCatch();
+                    } else if (h.type.isBroken) {
+                        HapticFeedback.error();
+                    } else {
+                        HapticFeedback.heartCatch();
                     }
 
                     // Happy character bounce + Sparkle burst
@@ -2138,15 +5121,26 @@
             // Missed hearts
             if (h.y > gameH + 20) {
                 if (!h.type.isBroken) {
-                    gameConsecutiveCatches = 0;
-                    gameCombo = 1;
-                    if (gameComboEl) gameComboEl.textContent = 'x1';
+                    // Streak Protector prevents combo loss
+                    if (!streakProtectActive) {
+                        gameConsecutiveCatches = 0;
+                        gameCombo = 1;
+                        if (gameComboEl) gameComboEl.textContent = 'x1';
+                    } else {
+                        // Show protection effect
+                        addCatchEffect(gameW / 2, gameH - 50, '🔥 Korundu!', true);
+                    }
                 }
                 fallingHearts.splice(i, 1);
                 continue;
             }
 
             // Draw heart (Optimized & Enhanced Visual Distinction)
+            // Skip if no type defined
+            if (!h.type) {
+                continue;
+            }
+            
             gameCtx.save();
             let drawX = h.x;
             let drawY = h.y;
@@ -2204,6 +5198,8 @@
 
             if (yDist < 60 && xDist < 60) {
                 console.log('Power-up caught:', pu.type.type);
+                playSound('powerup'); // Power-up sound
+                HapticFeedback.powerup();
                 activatePowerUp(pu.type.type);
                 gamePowerUps.splice(i, 1);
                 continue;
@@ -2241,6 +5237,30 @@
         if (invulnerableTimer > 0) {
             invulnerableTimer -= dt;
         }
+        
+        // Update boss controller effects
+        if (bossActive && bossController) {
+            bossController.updateFreezeEffect(dt);
+            
+            // Check lava bomb collision
+            if (bossController.isInLavaBomb(burakX, burakTop)) {
+                // Player is standing in lava - take damage
+                if (invulnerableTimer <= 0) {
+                    takeDamage();
+                    addCatchEffect(burakX, burakTop - 30, '🔥 LAV!', false);
+                }
+            }
+            
+            // Check poison zone collision
+            if (bossController.isInPoison(burakX, burakTop)) {
+                // Player is in poison - take damage over time
+                if (invulnerableTimer <= 0 && gameFrameCount % 60 === 0) { // Damage every second
+                    takeDamage();
+                    addCatchEffect(burakX, burakTop - 30, '☠️ ZEHİR!', false);
+                }
+            }
+        }
+        
         if (shieldActive) {
             shieldTimer -= dt;
             if (shieldTimer <= 0) { shieldActive = false; }
@@ -2256,6 +5276,18 @@
         if (loveBlastActive) {
             loveBlastTimer -= dt;
             if (loveBlastTimer <= 0) { loveBlastActive = false; }
+        }
+        if (doublePointsActive) {
+            doublePointsTimer -= dt;
+            if (doublePointsTimer <= 0) { doublePointsActive = false; }
+        }
+        if (precisionActive) {
+            precisionTimer -= dt;
+            if (precisionTimer <= 0) { precisionActive = false; }
+        }
+        if (streakProtectActive) {
+            streakProtectTimer -= dt;
+            if (streakProtectTimer <= 0) { streakProtectActive = false; }
         }
 
         // Draw Burak (DOM Transform + Canvas Effects)
@@ -2309,9 +5341,67 @@
             gameCtx.setLineDash([]);
         }
 
+        // Double Points aura (Canvas)
+        if (doublePointsActive) {
+            gameCtx.strokeStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(gameTime * 10) * 0.3})`;
+            gameCtx.lineWidth = 4;
+            gameCtx.beginPath();
+            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 15, 0, Math.PI * 2);
+            gameCtx.stroke();
+            
+            // Sparkles around character
+            if (gameFrameCount % 3 === 0) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = BURAK_SPRITE_SIZE / 2 + 15;
+                catchEffects.push({
+                    x: burakX + Math.cos(angle) * dist,
+                    y: burakTop + Math.sin(angle) * dist,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 0.5,
+                    color: '#ffd700',
+                    size: 3,
+                    sparkle: true
+                });
+            }
+        }
+
+        // Precision targeting lines (Canvas)
+        if (precisionActive) {
+            gameCtx.save();
+            gameCtx.strokeStyle = `rgba(255, 100, 100, ${0.2 + Math.sin(gameTime * 8) * 0.1})`;
+            gameCtx.lineWidth = 1;
+            gameCtx.setLineDash([3, 3]);
+            
+            // Draw lines to nearby hearts
+            fallingHearts.forEach(h => {
+                if (!h.type.isBroken && Math.abs(h.x - burakX) < 200) {
+                    gameCtx.beginPath();
+                    gameCtx.moveTo(burakX, burakTop);
+                    gameCtx.lineTo(h.x, h.y);
+                    gameCtx.stroke();
+                }
+            });
+            
+            gameCtx.setLineDash([]);
+            gameCtx.restore();
+        }
+
+        // Streak Protect indicator (Canvas)
+        if (streakProtectActive) {
+            gameCtx.save();
+            gameCtx.font = 'bold 24px Montserrat';
+            gameCtx.fillStyle = `rgba(255, 100, 50, ${0.6 + Math.sin(gameTime * 8) * 0.3})`;
+            gameCtx.textAlign = 'center';
+            gameCtx.shadowColor = 'rgba(255, 100, 50, 0.8)';
+            gameCtx.shadowBlur = 10;
+            gameCtx.fillText('🔥', burakX, burakTop - BURAK_SPRITE_SIZE / 2 - 20);
+            gameCtx.restore();
+        }
+
         gameCtx.restore();
 
-        // Pulsing Combo Counter on Canvas (Enhanced with color cycling)
+        // Pulsing Combo Counter on Canvas (Enhanced with color cycling and screen edge effects)
         if (gameCombo >= 2) {
             gameCtx.save();
             const comboPulse = 1 + Math.sin(gameTime * 10) * 0.15;
@@ -2329,6 +5419,67 @@
             gameCtx.shadowBlur = 0;
             gameCtx.fillText('COMBO!', 0, 22);
             gameCtx.restore();
+            
+            // Screen edge glow effects for high combos
+            if (gameCombo >= 3) {
+                gameCtx.save();
+                const glowIntensity = (gameCombo - 2) * 0.15;
+                const glowPulse = 0.5 + Math.sin(gameTime * 8) * 0.3;
+                
+                // Top edge glow
+                const topGradient = gameCtx.createLinearGradient(0, 0, 0, 80);
+                topGradient.addColorStop(0, `hsla(${comboHue}, 100%, 60%, ${glowIntensity * glowPulse})`);
+                topGradient.addColorStop(1, 'transparent');
+                gameCtx.fillStyle = topGradient;
+                gameCtx.fillRect(0, 0, gameW, 80);
+                
+                // Bottom edge glow
+                const bottomGradient = gameCtx.createLinearGradient(0, gameH - 80, 0, gameH);
+                bottomGradient.addColorStop(0, 'transparent');
+                bottomGradient.addColorStop(1, `hsla(${comboHue}, 100%, 60%, ${glowIntensity * glowPulse})`);
+                gameCtx.fillStyle = bottomGradient;
+                gameCtx.fillRect(0, gameH - 80, gameW, 80);
+                
+                // Side glows for combo 4+
+                if (gameCombo >= 4) {
+                    const leftGradient = gameCtx.createLinearGradient(0, 0, 60, 0);
+                    leftGradient.addColorStop(0, `hsla(${comboHue}, 100%, 60%, ${glowIntensity * glowPulse * 0.7})`);
+                    leftGradient.addColorStop(1, 'transparent');
+                    gameCtx.fillStyle = leftGradient;
+                    gameCtx.fillRect(0, 0, 60, gameH);
+                    
+                    const rightGradient = gameCtx.createLinearGradient(gameW - 60, 0, gameW, 0);
+                    rightGradient.addColorStop(0, 'transparent');
+                    rightGradient.addColorStop(1, `hsla(${comboHue}, 100%, 60%, ${glowIntensity * glowPulse * 0.7})`);
+                    gameCtx.fillStyle = rightGradient;
+                    gameCtx.fillRect(gameW - 60, 0, 60, gameH);
+                }
+                
+                gameCtx.restore();
+            }
+        }
+
+        // Update and draw boss projectiles
+        if (bossActive) {
+            updateBossProjectiles(dt);
+            
+            // Draw BossController visual effects
+            bossController.drawLavaBombs(gameCtx);
+            bossController.drawFreezeEffect(gameCtx, gameW, gameH);
+            bossController.drawPoisonZones(gameCtx);
+            bossController.drawGlitchEffect(gameCtx, gameW, gameH, gameTime);
+            
+            // Draw fog effect (needs player position)
+            bossController.drawFogEffect(gameCtx, gameW, gameH, burakX, burakTop);
+            
+            // Draw ego wall (needs boss position)
+            const bossConfig = WAVES[currentWave - 1]?.boss || {};
+            bossController.drawEgoWall(gameCtx, gameW, gameH, bossX, bossY);
+            
+            // Apply grayscale filter (Boss 11: Routine)
+            if (bossController.grayscaleActive) {
+                bossController.applyGrayscaleFilter(gameCtx, gameW, gameH);
+            }
         }
 
         // Draw HUD Stats (Canvas)
@@ -2479,6 +5630,12 @@
     // ----------------------------
     function handleGamePointerMove(e) {
         if (!gameActive) return;
+        
+        // Check if player is frozen by boss
+        if (bossController && bossController.isPlayerFrozen()) {
+            return; // Can't move when frozen
+        }
+        
         e.preventDefault();
         const rect = gameCanvas.getBoundingClientRect();
         let clientX;
@@ -2487,7 +5644,31 @@
         } else {
             clientX = e.clientX;
         }
-        burakX = Math.max(BURAK_SPRITE_SIZE / 2, Math.min(gameW - BURAK_SPRITE_SIZE / 2, clientX - rect.left));
+        
+        // Check if player is frozen (Boss 3)
+        if (bossController && bossController.isPlayerFrozen()) {
+            return; // No movement when frozen
+        }
+        
+        // Calculate target position
+        let targetX = clientX - rect.left;
+        
+        // Apply inverted controls (Boss 5)
+        if (bossController && bossController.invertedControls) {
+            const centerX = gameW / 2;
+            const offset = targetX - centerX;
+            targetX = centerX - offset; // Invert around center
+        }
+        
+        // Apply slow debuff from boss
+        const slowMultiplier = bossController ? bossController.getSlowMultiplier() : 1.0;
+        
+        // Smooth movement with slow effect
+        // Use a smaller interpolation factor when slowed
+        const baseSpeed = 0.3; // Base interpolation speed
+        const moveSpeed = baseSpeed * slowMultiplier;
+        const dx = (targetX - burakX) * moveSpeed;
+        burakX = Math.max(BURAK_SPRITE_SIZE / 2, Math.min(gameW - BURAK_SPRITE_SIZE / 2, burakX + dx));
     }
 
     if (gameCanvas) {
@@ -2501,6 +5682,27 @@
     }
 
     // ----------------------------
+    // Mobile Loading Screen (Only for Game)
+    // ----------------------------
+    function showGameLoadingScreen() {
+        // Create loading screen dynamically
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'game-loading';
+        loadingDiv.className = 'mobile-loading';
+        loadingDiv.innerHTML = `
+            <div class="loading-heart">❤️</div>
+            <div class="loading-text">Oyun Hazırlanıyor...</div>
+        `;
+        document.body.appendChild(loadingDiv);
+        
+        // Hide after a short delay (game initialization time)
+        setTimeout(() => {
+            loadingDiv.classList.add('hidden');
+            setTimeout(() => loadingDiv.remove(), 500);
+        }, 800);
+    }
+
+    // ----------------------------
     // Start / End / Close Game
     // ----------------------------
     function startGame() {
@@ -2508,6 +5710,34 @@
             console.log("startGame ignored: game already active");
             return;
         }
+        
+        // Stop main menu music (dilerimki.mp3) and start game music
+        if (bgMusic) {
+            bgMusic.pause();
+            bgMusic.currentTime = 0; // Reset to beginning
+        }
+        startGameMusic();
+        
+        // Show loading screen only on mobile and only when starting game
+        if (isMobile) {
+            showGameLoadingScreen();
+        }
+        
+        // Hide main menu and show game elements
+        if (mainMenu) mainMenu.classList.add('hidden');
+        
+        const gameCanvas = document.getElementById('game-canvas');
+        const gameHud = document.querySelector('.game-hud');
+        const gameChars = document.getElementById('game-characters');
+        const gameCloseBtn = document.getElementById('game-close');
+        const gamePauseBtn = document.getElementById('game-pause');
+        
+        if (gameCanvas) gameCanvas.style.display = 'block';
+        if (gameHud) gameHud.style.display = 'flex';
+        if (gameChars) gameChars.style.display = 'block';
+        if (gameCloseBtn) gameCloseBtn.style.display = 'block';
+        if (gamePauseBtn) gamePauseBtn.style.display = 'block';
+        
         gameSessionId++;
         const currentSession = gameSessionId;
         console.log("Starting game session:", currentSession);
@@ -2549,7 +5779,26 @@
         longestCombo = 0;
         bossesDefeated = 0;
         bossActive = false;
+        bossWarningShown = false;
+        bossIntroTimer = 0;
+        bossDefeatedTimer = 0;
+        bossPhase = 1;
+        bossLastDamageTime = 0;
         gamePaused = false;
+        
+        // Initialize Achievement System for new game
+        if (achievementSystem) {
+            achievementSystem.incrementStat('totalGamesPlayed');
+            achievementSystem.stats.currentWaveDamage = 0;
+            achievementSystem.stats.gameStartTime = Date.now();
+        }
+        
+        // Reset Boss Controller
+        if (bossController) {
+            bossController.reset();
+            bossController.ctx.gameW = gameW;
+            bossController.ctx.gameH = gameH;
+        }
 
         // Reset HUD
         if (statHeartsEl) statHeartsEl.textContent = '0';
@@ -2593,6 +5842,26 @@
         console.log("endGame called, score:", gameScore);
         gameActive = false;
         cancelAnimationFrame(gameAnimFrame);
+        
+        // Achievement tracking - Update final stats
+        if (achievementSystem) {
+            achievementSystem.updateStat('highScore', gameScore);
+            achievementSystem.updateStat('highestWave', currentWave);
+            
+            // Check if game completed (reached wave 12)
+            if (currentWave >= 12) {
+                achievementSystem.updateStat('gameCompleted', true);
+            }
+        }
+        
+        // Stop game music and resume main menu music (dilerimki.mp3)
+        // Only resume if we haven't played the easter egg yet
+        stopGameMusic();
+        if (bgMusic && settings.music && state !== 'MAIN') {
+            bgMusic.currentTime = 0; // Start from beginning
+            bgMusic.play().catch(e => console.log("Audio prevented"));
+            isMusicPlaying = true;
+        }
 
         // High Score Logic
         const currentHigh = parseInt(localStorage.getItem('bernaGameHighScore') || '0');
@@ -2655,8 +5924,34 @@
     function closeGame() {
         gameActive = false;
         cancelAnimationFrame(gameAnimFrame);
-        if (gameOverlay) gameOverlay.classList.remove('active');
         if (gameOverScreen) gameOverScreen.classList.remove('active');
+        if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+        
+        // Keep game overlay open but show main menu
+        // (Main menu is inside game overlay)
+        if (mainMenu) mainMenu.classList.remove('hidden');
+        
+        // Hide game canvas and HUD
+        const gameCanvas = document.getElementById('game-canvas');
+        const gameHud = document.querySelector('.game-hud');
+        const gameChars = document.getElementById('game-characters');
+        const gameCloseBtn = document.getElementById('game-close');
+        const gamePauseBtn = document.getElementById('game-pause');
+        
+        if (gameCanvas) gameCanvas.style.display = 'none';
+        if (gameHud) gameHud.style.display = 'none';
+        if (gameChars) gameChars.style.display = 'none';
+        if (gameCloseBtn) gameCloseBtn.style.display = 'none';
+        if (gamePauseBtn) gamePauseBtn.style.display = 'none';
+        
+        // Stop game music and resume main menu music (dilerimki.mp3)
+        // Only resume if we haven't played the easter egg yet
+        stopGameMusic();
+        if (bgMusic && settings.music && state !== 'MAIN') {
+            bgMusic.currentTime = 0; // Start from beginning
+            bgMusic.play().catch(e => console.log("Audio prevented"));
+            isMusicPlaying = true;
+        }
     }
 
     // ----------------------------
@@ -2683,6 +5978,108 @@
             closeGame();
         });
     }
+    
+    // Stats Modal
+    if (gameStatsBtn) {
+        gameStatsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStatsModal();
+        });
+    }
+    
+    if (statsClose) {
+        statsClose.addEventListener('click', () => {
+            closeStatsModal();
+        });
+    }
+    
+    if (statsModal) {
+        statsModal.addEventListener('click', (e) => {
+            if (e.target === statsModal) {
+                closeStatsModal();
+            }
+        });
+    }
+    
+    // Stats tabs
+    document.querySelectorAll('.stats-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        });
+    });
+    
+    function openStatsModal() {
+        if (!statsModal) {
+            console.error('Stats modal element not found');
+            return;
+        }
+        
+        if (!achievementSystem) {
+            console.error('Achievement system not initialized');
+            // Show modal anyway with default values
+            statsModal.classList.add('active');
+            return;
+        }
+        
+        // Update stats
+        const stats = achievementSystem.stats;
+        const highScoreEl = document.getElementById('total-high-score');
+        const heartsEl = document.getElementById('total-hearts');
+        const bossesEl = document.getElementById('total-bosses');
+        const comboEl = document.getElementById('total-combo');
+        const gamesEl = document.getElementById('total-games');
+        const waveEl = document.getElementById('highest-wave');
+        
+        if (highScoreEl) highScoreEl.textContent = stats.highScore;
+        if (heartsEl) heartsEl.textContent = stats.totalHeartsCaught;
+        if (bossesEl) bossesEl.textContent = stats.totalBossesDefeated;
+        if (comboEl) comboEl.textContent = stats.longestCombo;
+        if (gamesEl) gamesEl.textContent = stats.totalGamesPlayed;
+        if (waveEl) waveEl.textContent = stats.highestWave;
+        
+        // Update achievement progress
+        const progress = achievementSystem.getProgress();
+        const countEl = document.getElementById('achievement-count');
+        const percentEl = document.getElementById('achievement-percent');
+        const progressEl = document.getElementById('achievement-progress');
+        
+        if (countEl) countEl.textContent = `${progress.unlocked}/${progress.total}`;
+        if (percentEl) percentEl.textContent = `${progress.percentage}%`;
+        if (progressEl) progressEl.style.width = `${progress.percentage}%`;
+        
+        // Populate achievements list
+        const achievementsList = document.getElementById('achievements-list');
+        if (achievementsList) {
+            achievementsList.innerHTML = '';
+            
+            const achievements = achievementSystem.getAllAchievements();
+            achievements.forEach(achievement => {
+                const item = document.createElement('div');
+                item.className = `achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}`;
+                item.innerHTML = `
+                    <div class="achievement-item-icon">${achievement.icon}</div>
+                    <div class="achievement-item-content">
+                        <div class="achievement-item-name">${achievement.name}</div>
+                        <div class="achievement-item-desc">${achievement.desc}</div>
+                    </div>
+                    <div class="achievement-item-status">${achievement.unlocked ? '✓' : '🔒'}</div>
+                `;
+                achievementsList.appendChild(item);
+            });
+        }
+        
+        statsModal.classList.add('active');
+    }
+    
+    function closeStatsModal() {
+        if (statsModal) {
+            statsModal.classList.remove('active');
+        }
+    }
 
     window.addEventListener('resize', () => {
         if (gameOverlay && gameOverlay.classList.contains('active')) {
@@ -2690,4 +6087,61 @@
             initGameStars();
         }
     });
+});
+
+
+// ===================================================================
+// PWA - Service Worker Registration
+// ===================================================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+                console.log('ServiceWorker registration successful:', registration.scope);
+            })
+            .catch((error) => {
+                console.log('ServiceWorker registration failed:', error);
+            });
+    });
+}
+
+// ===================================================================
+// PWA - Install Prompt
+// ===================================================================
+let deferredPrompt;
+
+// Check if mobile (define here since it's outside DOMContentLoaded scope)
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+// Get install button from HTML (in main menu)
+const installButton = document.getElementById('install-button');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Show install button on mobile
+    if (isMobileDevice && installButton) {
+        installButton.style.display = 'block';
+    }
+});
+
+if (installButton) {
+    installButton.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        console.log(`User response to install prompt: ${outcome}`);
+        deferredPrompt = null;
+        installButton.style.display = 'none';
+    });
+}
+
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    if (installButton) {
+        installButton.style.display = 'none';
+    }
 });
