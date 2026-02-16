@@ -1969,7 +1969,7 @@
                 color: '#7c3aed',
                 ability: 'jealousy_mirror',
                 name: 'Kıskançlık Aynası',
-                specialHeart: { emoji: '👓', name: 'Gerçeklik Gözlüğü', damage: 2 },
+                specialHeart: { emoji: '👓', name: 'Gerçeklik Gözlüğü', damage: 1 },
                 attacks: ['invert'],
                 description: 'Kontroller tersine döner'
             },
@@ -1988,7 +1988,7 @@
                 color: '#64748b',
                 ability: 'fog_forgetting',
                 name: 'Unutkanlık Sisi',
-                specialHeart: { emoji: '🔦', name: 'Fener', damage: 2 },
+                specialHeart: { emoji: '🔦', name: 'Fener', damage: 1 },
                 attacks: ['fog'],
                 description: 'Sis görüş alanını kısıtlar'
             },
@@ -2007,7 +2007,7 @@
                 color: '#78716c',
                 ability: 'ego_wall',
                 name: 'Ego Duvarı',
-                specialHeart: { emoji: '🔨', name: 'Çekiç', damage: 2 },
+                specialHeart: { emoji: '🔨', name: 'Çekiç', damage: 1 },
                 attacks: ['block'],
                 description: 'Duvar kalpleri engeller'
             },
@@ -2026,7 +2026,7 @@
                 color: '#7c3aed',
                 ability: 'gossip_snake',
                 name: 'Dedikodu Yılanı',
-                specialHeart: { emoji: '🎧', name: 'Kulaklık', damage: 2 },
+                specialHeart: { emoji: '🎧', name: 'Kulaklık', damage: 1 },
                 attacks: ['poison'],
                 description: 'Zehir sürekli hareket etmeyi zorlar'
             },
@@ -2045,7 +2045,7 @@
                 color: '#22c55e',
                 ability: 'glitch',
                 name: 'Teknoloji Canavarı',
-                specialHeart: { emoji: '🔄', name: 'Reset Tuşu', damage: 4 }, // Increased from 3
+                specialHeart: { emoji: '🔄', name: 'Reset Tuşu', damage: 2 },
                 attacks: ['lag'],
                 description: 'Lag simülasyonu kontrolleri geciktirir'
             },
@@ -2064,7 +2064,7 @@
                 color: '#fbbf24',
                 ability: 'time_thief',
                 name: 'Zaman Hırsızı',
-                specialHeart: { emoji: '🔋', name: 'Saat Pili', damage: 4 }, // Increased from 3
+                specialHeart: { emoji: '🔋', name: 'Saat Pili', damage: 2 },
                 attacks: ['time_warp'],
                 description: 'Zaman manipülasyonu ritmi bozar'
             },
@@ -2083,7 +2083,7 @@
                 color: '#64748b',
                 ability: 'routine',
                 name: 'Sıradanlık Devşiricisi',
-                specialHeart: { emoji: '🌈', name: 'Gökkuşağı Boyası', damage: 4 }, // Increased from 3
+                specialHeart: { emoji: '🌈', name: 'Gökkuşağı Boyası', damage: 2 },
                 attacks: ['grayscale'],
                 description: 'Renkleri çalar, kalpleri ayırt edemezsin'
             },
@@ -2102,7 +2102,7 @@
                 color: '#000000',
                 ability: 'dark_reflection',
                 name: 'Kara Sevda',
-                specialHeart: { emoji: '💖', name: 'Sonsuz Aşk', damage: 5 },
+                specialHeart: { emoji: '💖', name: 'Sonsuz Aşk', damage: 2 },
                 attacks: ['ultimate'],
                 description: 'Tüm yetenekleri birleştirir - FINAL BOSS'
             },
@@ -2159,7 +2159,7 @@
                 color: '#dc2626', 
                 ability: 'angry',
                 name: 'Öfke Fırtınası',
-                specialHeart: { emoji: '💥', name: 'Patlama Kalbi', damage: 2 },
+                specialHeart: { emoji: '💥', name: 'Patlama Kalbi', damage: 1 },
                 attacks: ['burst', 'rage', 'lightning'],
                 description: 'Zorluklar sizi yıldırmasın'
             },
@@ -2197,7 +2197,7 @@
                 color: '#7c3aed', 
                 ability: 'jealous',
                 name: 'Karanlık Gölge',
-                specialHeart: { emoji: '🖤', name: 'Karanlık Kalp', damage: 2 },
+                specialHeart: { emoji: '🖤', name: 'Karanlık Kalp', damage: 1 },
                 attacks: ['mirage', 'clone', 'curse'],
                 description: 'Birbirinize güvenin'
             },
@@ -2216,7 +2216,7 @@
                 color: '#991b1b', 
                 ability: 'demon',
                 name: 'İçimizdeki Şeytan',
-                specialHeart: { emoji: '🔥', name: 'Cehennem Ateşi', damage: 3 },
+                specialHeart: { emoji: '🔥', name: 'Cehennem Ateşi', damage: 2 },
                 attacks: ['hellfire', 'teleport', 'chaos'],
                 description: 'En karanlık an'
             },
@@ -2254,7 +2254,7 @@
                 color: '#38bdf8', 
                 ability: 'diamond',
                 name: 'Elmas Kalp',
-                specialHeart: { emoji: '💍', name: 'Yüzük', damage: 2 },
+                specialHeart: { emoji: '💍', name: 'Yüzük', damage: 1 },
                 attacks: ['sparkle', 'dazzle', 'shine'],
                 description: 'En özel an'
             },
@@ -2292,7 +2292,7 @@
                 color: '#a855f7', 
                 ability: 'eternal',
                 name: 'Sonsuz Aşk',
-                specialHeart: { emoji: '♾️', name: 'Sonsuzluk', damage: 5 },
+                specialHeart: { emoji: '♾️', name: 'Sonsuzluk', damage: 2 },
                 attacks: ['infinity', 'timeless', 'eternal', 'cosmic'],
                 description: 'Aşk sonsuza kadar'
             },
