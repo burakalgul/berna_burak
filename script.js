@@ -569,7 +569,7 @@
     // RELATIONSHIP COUNTER
     // -----------------------------------------------------------------
     function updateCounter() {
-        const startDate = new Date('November 2, 2024 22:00:00');
+        const startDate = new Date('November 2, 2025 22:00:00');
         const now = new Date();
 
         if (now < startDate) {
