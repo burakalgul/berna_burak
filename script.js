@@ -1511,6 +1511,7 @@
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🧲 Mıknatıs!', true);
         } else if (type === 'slowmo') {
             slowMoActive = true;
+            slowMoTimer = 6; // Set timer!
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '⏳ Yavaşla!', true);
         } else if (type === 'rainbow') {
             loveBlastActive = true;
@@ -2196,9 +2197,13 @@
             pu.y += pu.vy;
             pu.glow = Math.sin(gameTime * 5) * 0.3 + 0.7;
 
-            // Power-up collision (Widened range)
-            if (pu.y > burakTop - 50 && pu.y < burakTop + 60 &&
-                Math.abs(pu.x - burakX) < BURAK_CATCH_W / 2 + 30) {
+            // Power-up collision (Widened range and debugged)
+            // Debug collision: Check if Burak is close enough horizontally and vertically
+            const xDist = Math.abs(pu.x - burakX);
+            const yDist = Math.abs(pu.y - (burakTop + 30)); // Center of Burak
+
+            if (yDist < 60 && xDist < 60) {
+                console.log('Power-up caught:', pu.type.type);
                 activatePowerUp(pu.type.type);
                 gamePowerUps.splice(i, 1);
                 continue;
