@@ -944,6 +944,29 @@
         });
     }
 
+    // Pause screen buttons
+    const pauseResumeBtn = document.getElementById('pause-resume');
+    const pauseQuitBtn = document.getElementById('pause-quit');
+
+    if (pauseResumeBtn) {
+        pauseResumeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            gamePaused = false;
+            if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+            gameLoop(gameSessionId);
+            playSound('combo');
+        });
+    }
+
+    if (pauseQuitBtn) {
+        pauseQuitBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            gamePaused = false;
+            if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+            closeGame();
+        });
+    }
+
     // --- NEW: Sound System (Web Audio API) ---
     let audioCtx = null;
     function getAudioCtx() {
@@ -2068,7 +2091,12 @@
                         playSound('catch');
                     }
 
-                    // Happy character bounce
+                    // Haptic feedback on catch
+                    if (navigator.vibrate && h.type.isBroken) {
+                        navigator.vibrate(50); // Short buzz for broken hearts
+                    }
+
+                    // Happy character bounce + Sparkle burst
                     if (burakEl) {
                         burakEl.style.transform = `translate3d(${burakX - 50}px, -15px, 0) scale(1.1) rotate(${Math.sin(gameTime * 15) * 5}deg)`;
                         setTimeout(() => {
@@ -2076,6 +2104,22 @@
                                 // Reset to base animation in next frame
                             }
                         }, 150);
+
+                        // Sparkle burst around Burak 
+                        if (!h.type.isBroken) {
+                            for (let s = 0; s < 5; s++) {
+                                catchEffects.push({
+                                    x: burakX + (Math.random() - 0.5) * 60,
+                                    y: burakTop + (Math.random() - 0.5) * 40,
+                                    vx: (Math.random() - 0.5) * 3,
+                                    vy: -Math.random() * 2 - 1,
+                                    life: 0.8,
+                                    color: ['#ffeb3b', '#ff9800', '#fff', '#ff6b88'][Math.floor(Math.random() * 4)],
+                                    size: Math.random() * 3 + 1,
+                                    sparkle: true
+                                });
+                            }
+                        }
                     }
                     if (bernaEl) {
                         bernaEl.style.transform = `translate3d(${bernaX - 50}px, 0, 0) scale(1.1)`;
@@ -2146,7 +2190,7 @@
             gameCtx.restore();
         }
 
-        // Update & draw power-ups (Optimized: Removed shadows)
+        // Update & draw power-ups (Enhanced with glow aura)
         for (let i = gamePowerUps.length - 1; i >= 0; i--) {
             const pu = gamePowerUps[i];
             pu.y += pu.vy;
@@ -2166,6 +2210,16 @@
             }
 
             gameCtx.save();
+
+            // Glow aura behind power-up
+            const glowRadius = 30 + Math.sin(gameTime * 6) * 8;
+            const auraGradient = gameCtx.createRadialGradient(pu.x, pu.y, 0, pu.x, pu.y, glowRadius);
+            auraGradient.addColorStop(0, `rgba(255, 255, 100, ${0.25 * pu.glow})`);
+            auraGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
+            gameCtx.fillStyle = auraGradient;
+            gameCtx.beginPath();
+            gameCtx.arc(pu.x, pu.y, glowRadius, 0, Math.PI * 2);
+            gameCtx.fill();
             gameCtx.translate(pu.x, pu.y);
             gameCtx.globalAlpha = pu.glow;
             gameCtx.font = `${pu.type.size}px serif`;
@@ -2204,6 +2258,24 @@
         // 1. Draw effects on Canvas (behind/around the DOM element)
         gameCtx.save();
 
+        // Catch area indicator for new players (first 3 seconds)
+        if (gameTime < 3) {
+            const areaAlpha = Math.max(0, 1 - gameTime / 3) * 0.3;
+            gameCtx.strokeStyle = `rgba(255, 107, 136, ${areaAlpha})`;
+            gameCtx.lineWidth = 2;
+            gameCtx.setLineDash([5, 5]);
+            gameCtx.beginPath();
+            gameCtx.arc(burakX, burakTop, BURAK_CATCH_W / 2 + 10, 0, Math.PI * 2);
+            gameCtx.stroke();
+            gameCtx.setLineDash([]);
+
+            // Label
+            gameCtx.font = '10px Montserrat, sans-serif';
+            gameCtx.fillStyle = `rgba(255, 204, 213, ${areaAlpha})`;
+            gameCtx.textAlign = 'center';
+            gameCtx.fillText('Yakalama Alanı', burakX, burakTop + BURAK_SPRITE_SIZE / 2 + 20);
+        }
+
         // Flashing effect when invulnerable (Canvas only affects what we draw here, not DOM)
         // For DOM transparency, we need to set opacity on the element
         if (invulnerableTimer > 0 && Math.floor(gameTime * 10) % 2 === 0) {
@@ -2234,20 +2306,23 @@
 
         gameCtx.restore();
 
-        // Pulsing Combo Counter on Canvas
+        // Pulsing Combo Counter on Canvas (Enhanced with color cycling)
         if (gameCombo >= 2) {
             gameCtx.save();
-            const comboPulse = 1 + Math.sin(gameTime * 10) * 0.1;
+            const comboPulse = 1 + Math.sin(gameTime * 10) * 0.15;
+            const comboHue = gameCombo >= 4 ? (340 + gameTime * 60) % 360 : 345;
             gameCtx.translate(gameW - 80, 100);
             gameCtx.scale(comboPulse, comboPulse);
-            gameCtx.font = 'bold 40px Montserrat';
-            gameCtx.fillStyle = '#ff4d6d';
-            gameCtx.shadowColor = 'rgba(255, 77, 109, 0.5)';
-            gameCtx.shadowBlur = 15;
+            gameCtx.font = `bold ${36 + gameCombo * 2}px Montserrat`;
+            gameCtx.fillStyle = `hsl(${comboHue}, 100%, 65%)`;
+            gameCtx.shadowColor = `hsla(${comboHue}, 100%, 50%, 0.6)`;
+            gameCtx.shadowBlur = 20;
             gameCtx.textAlign = 'center';
             gameCtx.fillText('x' + gameCombo, 0, 0);
-            gameCtx.font = 'bold 16px Montserrat';
-            gameCtx.fillText('COMBO!', 0, 25);
+            gameCtx.font = 'bold 14px Montserrat';
+            gameCtx.fillStyle = '#ffccd5';
+            gameCtx.shadowBlur = 0;
+            gameCtx.fillText('COMBO!', 0, 22);
             gameCtx.restore();
         }
 
@@ -2334,6 +2409,42 @@
             }
         }
         gameCtx.globalAlpha = 1.0;
+
+        // Wave Progress Bar (above ground line)
+        if (!bossActive) {
+            const config = getCurrentWaveConfig();
+            const target = config.scoreTarget;
+            if (target !== Infinity) {
+                const progress = Math.min(1, waveScoreEarned / target);
+                const barW = gameW - 40;
+                const barH = 6;
+                const barY = gameH - 18;
+                const barX = 20;
+
+                // Track background
+                gameCtx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                gameCtx.beginPath();
+                gameCtx.roundRect(barX, barY, barW, barH, 3);
+                gameCtx.fill();
+
+                // Progress fill
+                if (progress > 0) {
+                    const grad = gameCtx.createLinearGradient(barX, 0, barX + barW * progress, 0);
+                    grad.addColorStop(0, '#ff6b88');
+                    grad.addColorStop(1, '#a855f7');
+                    gameCtx.fillStyle = grad;
+                    gameCtx.beginPath();
+                    gameCtx.roundRect(barX, barY, barW * progress, barH, 3);
+                    gameCtx.fill();
+                }
+
+                // Label
+                gameCtx.font = '10px Montserrat, sans-serif';
+                gameCtx.fillStyle = 'rgba(255, 204, 213, 0.6)';
+                gameCtx.textAlign = 'center';
+                gameCtx.fillText(`${Math.floor(progress * 100)}% → BOSS`, gameW / 2, barY - 4);
+            }
+        }
 
         // Ground line
         gameCtx.fillStyle = 'rgba(255, 77, 109, 0.15)';
@@ -2494,7 +2605,30 @@
         if (statTimeEl) statTimeEl.textContent = Math.floor(gameTime) + 's';
         if (statBossesEl) statBossesEl.textContent = bossesDefeated;
 
-        if (finalScoreEl) finalScoreEl.textContent = gameScore;
+        // Animated Score Counter (slot machine effect)
+        if (finalScoreEl) {
+            finalScoreEl.textContent = '0';
+            const targetScore = gameScore;
+            const duration = 1500; // 1.5 seconds
+            const startTime = performance.now();
+
+            function animateScore(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                // Ease-out curve for satisfying deceleration
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(targetScore * eased);
+                finalScoreEl.textContent = current;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateScore);
+                } else {
+                    finalScoreEl.textContent = targetScore;
+                }
+            }
+            requestAnimationFrame(animateScore);
+        }
+
         if (finalWaveEl) finalWaveEl.textContent = currentWave;
         if (gameOverMsgEl) gameOverMsgEl.textContent = GAME_OVER_MESSAGES[Math.floor(Math.random() * GAME_OVER_MESSAGES.length)];
 
