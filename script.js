@@ -2790,6 +2790,12 @@
         gameScore += 500 + (currentWave * 100); // Bonus increases with wave
         if (gameScoreEl) gameScoreEl.textContent = gameScore;
         
+        // Reset Final Boss mechanics
+        window.finalBossJumpEnabled = false;
+        window.playerJumpVelocity = 0;
+        window.playerY = 0;
+        window.playerOnGround = false;
+        
         // Achievement tracking
         if (achievementSystem) {
             achievementSystem.incrementStat('totalBossesDefeated');
@@ -3048,7 +3054,56 @@
         gameCtx.globalAlpha = 1;
 
         // Define burakTop early for use in boss abilities
-        const burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        let burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+
+        // ============================================
+        // FINAL BOSS PHASE 3: PLATFORM CLIMBING
+        // ============================================
+        if (bossActive && bossPhase === 3 && window.finalBossJumpEnabled) {
+            const gravity = 0.8;
+            const jumpPower = -15;
+            
+            // Apply gravity
+            window.playerJumpVelocity += gravity;
+            window.playerY += window.playerJumpVelocity;
+            
+            // Check platform collision
+            const platform = bossController.checkPlatformCollision(burakX, window.playerY, window.playerJumpVelocity);
+            if (platform) {
+                window.playerY = platform.y - 20;
+                window.playerJumpVelocity = 0;
+                window.playerOnGround = true;
+            }
+            
+            // Ground collision
+            if (window.playerY >= gameH - 100) {
+                window.playerY = gameH - 100;
+                window.playerJumpVelocity = 0;
+                window.playerOnGround = true;
+            }
+            
+            // Jump input (tap/click anywhere)
+            if (window.playerOnGround && (window.jumpPressed || window.tapJump)) {
+                window.playerJumpVelocity = jumpPower;
+                window.playerOnGround = false;
+                window.jumpPressed = false;
+                window.tapJump = false;
+                playSound('catch');
+            }
+            
+            // Check if player reached boss
+            const distToBoss = Math.sqrt(Math.pow(burakX - bossX, 2) + Math.pow(window.playerY - bossY, 2));
+            if (distToBoss < 80) {
+                // Trigger final beam attack
+                if (!bossController.finalBeamActive) {
+                    bossController.activateFinalBeam();
+                    addCatchEffect(gameW / 2, gameH / 2, '💖 SONSUZ AŞK IŞINI!', true);
+                }
+            }
+            
+            // Update burakTop for phase 3
+            burakTop = window.playerY;
+        }
 
         // ============================================
         // BOSS LOGIC - COMPLETELY REWRITTEN
@@ -3522,6 +3577,7 @@
                     // Boss 12: Dark Reflection - Multi-phase Final Boss
                     if (!bossController.activeEffects.has('dark_reflection')) {
                         bossController.enableDarkReflection();
+                        bossController.initFinalBossPlatforms(gameW, gameH);
                         addCatchEffect(gameW / 2, gameH / 2, '💀 FİNAL BOSS!', true);
                     }
                     
@@ -3535,9 +3591,23 @@
                             bossController.enableFogForgetting();
                         }
                     }
-                    // Phase 3: Ultimate - Berna trapped, no hearts
+                    // Phase 3: Ultimate - Berna trapped, platform climbing
                     else if (bossPhase === 3) {
                         bernaOpacity = 0.3; // Berna trapped in crystal
+                        bossController.bernaTrapped = true;
+                        
+                        // Enable jump controls for phase 3
+                        if (!window.finalBossJumpEnabled) {
+                            window.finalBossJumpEnabled = true;
+                            window.playerJumpVelocity = 0;
+                            window.playerY = gameH - 100; // Start at bottom
+                            window.playerOnGround = true;
+                            addCatchEffect(gameW / 2, gameH / 2, '🎮 ZIPLAYA ZIPLAYA BOSS\'A ULAŞ!', true);
+                            setTimeout(() => {
+                                addCatchEffect(gameW / 2, gameH / 2 + 40, '📱 DOKUN / ⌨️ SPACE', true);
+                            }, 1500);
+                        }
+                        
                         // No hearts spawn in phase 3
                     }
                     
@@ -3939,6 +4009,34 @@
             gameCtx.shadowBlur = 4;
             gameCtx.fillText(`${bossConfig.emoji} BOSS ${bossConfig.emoji}`, gameW / 2, barY - 10);
             gameCtx.fillText(`${bossHP} / ${bossMaxHP}`, gameW / 2, barY + barHeight / 2 + 5);
+            
+            // Kinetic Charge Bar (Boss 4 only)
+            if (bossConfig.ability === 'windy_day' && bossController.kineticCharge > 0) {
+                const chargeBarY = barY + barHeight + 15;
+                const chargeBarHeight = 10;
+                const chargePercent = bossController.kineticCharge / 100;
+                
+                // Background
+                gameCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                gameCtx.fillRect(barX, chargeBarY, barWidth, chargeBarHeight);
+                
+                // Charge fill
+                const chargeGradient = gameCtx.createLinearGradient(barX, 0, barX + barWidth * chargePercent, 0);
+                chargeGradient.addColorStop(0, '#ffeb3b');
+                chargeGradient.addColorStop(1, '#ff9800');
+                gameCtx.fillStyle = chargeGradient;
+                gameCtx.fillRect(barX, chargeBarY, barWidth * chargePercent, chargeBarHeight);
+                
+                // Border
+                gameCtx.strokeStyle = '#ffffff';
+                gameCtx.lineWidth = 1;
+                gameCtx.strokeRect(barX, chargeBarY, barWidth, chargeBarHeight);
+                
+                // Text
+                gameCtx.font = 'bold 10px Montserrat';
+                gameCtx.fillStyle = '#ffeb3b';
+                gameCtx.fillText('⚡ KİNETİK ŞARJ', gameW / 2, chargeBarY - 3);
+            }
             
             gameCtx.restore();
         }
@@ -5476,6 +5574,22 @@
             const bossConfig = WAVES[currentWave - 1]?.boss || {};
             bossController.drawEgoWall(gameCtx, gameW, gameH, bossX, bossY);
             
+            // Draw Final Boss platforms (Phase 3)
+            if (bossPhase === 3 && bossConfig.ability === 'dark_reflection') {
+                bossController.drawFinalBossPlatforms(gameCtx);
+            }
+            
+            // Draw Final Boss beam attack
+            if (bossController.finalBeamActive) {
+                const beamComplete = bossController.updateFinalBeam(dt);
+                bossController.drawFinalBeam(gameCtx, gameW, gameH, burakX, burakTop, bernaX, bernaY, bossX, bossY);
+                
+                // Defeat boss when beam completes
+                if (beamComplete) {
+                    defeatBoss();
+                }
+            }
+            
             // Apply grayscale filter (Boss 11: Routine)
             if (bossController.grayscaleActive) {
                 bossController.applyGrayscaleFilter(gameCtx, gameW, gameH);
@@ -5504,12 +5618,18 @@
 
             // Catch reaction
             const excitement = Math.min(0.2, gameCombo * 0.02);
-            const jumpOffset = Math.abs(Math.sin(gameTime * 10)) * (excitement * 20);
+            let jumpOffset = Math.abs(Math.sin(gameTime * 10)) * (excitement * 20);
+            
+            // Final Boss Phase 3: Use platform Y position
+            let yPosition = -jumpOffset;
+            if (bossActive && bossPhase === 3 && window.finalBossJumpEnabled) {
+                yPosition = -(gameH - window.playerY - 20); // Convert to bottom-relative
+            }
 
             // Apply transform
             // Note: Burak is positioned bottom:20px. We translate X. And Y for jump.
             // We need to subtract half width (50px) to center it on burakX
-            burakEl.style.transform = `translate3d(${burakX - 50}px, ${-jumpOffset}px, 0) rotate(${tiltAngle}deg) scale(${breatheScale}, ${breatheScale + excitement})`;
+            burakEl.style.transform = `translate3d(${burakX - 50}px, ${yPosition}px, 0) rotate(${tiltAngle}deg) scale(${breatheScale}, ${breatheScale + excitement})`;
 
             // Dynamic drop shadow via CSS filter
             burakEl.style.filter = `drop-shadow(0 15px 10px rgba(0,0,0,0.5))`;
@@ -5667,8 +5787,22 @@
         // Use a smaller interpolation factor when slowed
         const baseSpeed = 0.3; // Base interpolation speed
         const moveSpeed = baseSpeed * slowMultiplier;
+        const oldBurakX = burakX;
         const dx = (targetX - burakX) * moveSpeed;
         burakX = Math.max(BURAK_SPRITE_SIZE / 2, Math.min(gameW - BURAK_SPRITE_SIZE / 2, burakX + dx));
+        
+        // Track kinetic charge for Boss 4
+        if (bossActive && bossController) {
+            const playerVelocityX = burakX - oldBurakX;
+            const kineticCharge = bossController.updateKineticCharge(playerVelocityX, dt);
+            
+            // Auto-damage boss when fully charged
+            if (bossController.isKineticCharged()) {
+                damageBoss(1, 'kinetic');
+                bossController.kineticCharge = 0; // Reset charge
+                addCatchEffect(burakX, burakTop - 30, '⚡ KİNETİK ŞARJ!', true);
+            }
+        }
     }
 
     if (gameCanvas) {
@@ -5677,8 +5811,23 @@
         gameCanvas.addEventListener('touchstart', (e) => {
             if (!gameActive) return;
             e.preventDefault();
+            
+            // Jump control for Final Boss Phase 3
+            if (bossActive && bossPhase === 3 && window.finalBossJumpEnabled) {
+                window.tapJump = true;
+            }
+            
             handleGamePointerMove(e);
         }, { passive: false });
+        
+        // Keyboard jump control for desktop
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.code === 'Space' && bossActive && bossPhase === 3 && window.finalBossJumpEnabled) {
+                window.jumpPressed = true;
+                e.preventDefault();
+            }
+        });
     }
 
     // ----------------------------

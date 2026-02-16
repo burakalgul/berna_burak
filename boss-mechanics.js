@@ -212,13 +212,35 @@ class BossController {
     // Boss 4: Windy Day - Strong Wind Physics
     enableWindyDay() {
         this.activeEffects.add('windy_day');
+        this.kineticCharge = 0; // Kinetic energy charge (0-100)
+        this.windDirection = 1; // Current wind direction
     }
 
     applyWindPhysics(hearts, gameTime) {
         const windStrength = Math.sin(gameTime * 2) * 5;
+        this.windDirection = Math.sign(windStrength) || 1;
         hearts.forEach(heart => {
             heart.vx += windStrength * 0.05;
         });
+    }
+
+    // Update kinetic charge based on player movement against wind
+    updateKineticCharge(playerVelocityX, dt) {
+        if (!this.activeEffects.has('windy_day')) return 0;
+        
+        // If player moves against wind, charge increases
+        if (Math.sign(playerVelocityX) === -this.windDirection && Math.abs(playerVelocityX) > 0.5) {
+            this.kineticCharge = Math.min(100, this.kineticCharge + dt * 30);
+        } else {
+            // Slowly decay if not charging
+            this.kineticCharge = Math.max(0, this.kineticCharge - dt * 10);
+        }
+        
+        return this.kineticCharge;
+    }
+
+    isKineticCharged() {
+        return this.kineticCharge >= 100;
     }
 
     // ============================================
@@ -524,6 +546,110 @@ class BossController {
     // Boss 12: Dark Reflection - Multi-phase Final Boss
     enableDarkReflection() {
         this.activeEffects.add('dark_reflection');
+        this.finalBossPlatforms = [];
+        this.bernaTrapped = false;
+        this.finalBeamActive = false;
+        this.finalBeamProgress = 0;
+    }
+
+    // Initialize platforms for phase 3
+    initFinalBossPlatforms(gameW, gameH) {
+        this.finalBossPlatforms = [
+            { x: gameW * 0.2, y: gameH * 0.7, width: 100, height: 15 },
+            { x: gameW * 0.7, y: gameH * 0.6, width: 100, height: 15 },
+            { x: gameW * 0.4, y: gameH * 0.5, width: 100, height: 15 },
+            { x: gameW * 0.6, y: gameH * 0.35, width: 100, height: 15 },
+            { x: gameW * 0.3, y: gameH * 0.25, width: 120, height: 15 }
+        ];
+    }
+
+    drawFinalBossPlatforms(ctx) {
+        ctx.save();
+        ctx.fillStyle = '#ff1744';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        
+        this.finalBossPlatforms.forEach(platform => {
+            ctx.fillRect(platform.x - platform.width / 2, platform.y, platform.width, platform.height);
+            ctx.strokeRect(platform.x - platform.width / 2, platform.y, platform.width, platform.height);
+        });
+        ctx.restore();
+    }
+
+    checkPlatformCollision(playerX, playerY, playerVY) {
+        if (playerVY <= 0) return null; // Only collide when falling
+        
+        for (let platform of this.finalBossPlatforms) {
+            const px = platform.x - platform.width / 2;
+            const py = platform.y;
+            
+            if (playerX > px && playerX < px + platform.width &&
+                playerY > py - 20 && playerY < py + 5) {
+                return platform;
+            }
+        }
+        return null;
+    }
+
+    activateFinalBeam() {
+        this.finalBeamActive = true;
+        this.finalBeamProgress = 0;
+    }
+
+    updateFinalBeam(dt) {
+        if (this.finalBeamActive) {
+            this.finalBeamProgress += dt * 0.5; // 2 seconds animation
+            return this.finalBeamProgress >= 1.0;
+        }
+        return false;
+    }
+
+    drawFinalBeam(ctx, gameW, gameH, burakX, burakY, bernaX, bernaY, bossX, bossY) {
+        if (!this.finalBeamActive) return;
+
+        const progress = Math.min(1, this.finalBeamProgress);
+        
+        ctx.save();
+        
+        // Beam from Burak and Berna to Boss
+        const centerX = (burakX + bernaX) / 2;
+        const centerY = (burakY + bernaY) / 2;
+        
+        // Gradient beam
+        const gradient = ctx.createLinearGradient(centerX, centerY, bossX, bossY);
+        gradient.addColorStop(0, `rgba(255, 23, 68, ${progress})`);
+        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${progress})`);
+        gradient.addColorStop(1, `rgba(255, 23, 68, ${progress})`);
+        
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 30 * progress;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(bossX, bossY);
+        ctx.stroke();
+        
+        // Particles along beam
+        for (let i = 0; i < 20; i++) {
+            const t = (i / 20) * progress;
+            const x = centerX + (bossX - centerX) * t;
+            const y = centerY + (bossY - centerY) * t;
+            
+            ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
+            ctx.beginPath();
+            ctx.arc(x, y, 5 + Math.random() * 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Heart symbol at center
+        ctx.font = `${60 * progress}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(255, 23, 68, ${progress})`;
+        ctx.fillText('💖', centerX, centerY);
+        
+        ctx.restore();
     }
 
     // ============================================
@@ -545,6 +671,12 @@ class BossController {
         this.slowDebuff = 1.0;
         this.inputLag = 0;
         this.glitchIntensity = 0;
+        this.kineticCharge = 0;
+        this.windDirection = 1;
+        this.finalBossPlatforms = [];
+        this.bernaTrapped = false;
+        this.finalBeamActive = false;
+        this.finalBeamProgress = 0;
     }
 
     getSlowMultiplier() {
