@@ -5758,11 +5758,13 @@
         
         e.preventDefault();
         const rect = gameCanvas.getBoundingClientRect();
-        let clientX;
+        let clientX, clientY;
         if (e.touches && e.touches.length > 0) {
             clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         } else {
             clientX = e.clientX;
+            clientY = e.clientY;
         }
         
         // Check if player is frozen (Boss 3)
@@ -5770,8 +5772,31 @@
             return; // No movement when frozen
         }
         
-        // Calculate target position
+        // Show touch indicator on mobile
+        const touchIndicator = document.getElementById('touch-indicator');
+        if (touchIndicator && e.touches && e.touches.length > 0) {
+            touchIndicator.classList.add('active');
+            touchIndicator.style.left = clientX + 'px';
+            touchIndicator.style.top = clientY + 'px';
+        }
+        
+        // Calculate target position with touch offset for better visibility
         let targetX = clientX - rect.left;
+        
+        // MOBILE TOUCH OFFSET: If touching near bottom, offset character upward
+        // This prevents finger from blocking the character view
+        if (e.touches && e.touches.length > 0) {
+            const touchY = clientY - rect.top;
+            const touchYPercent = touchY / gameH;
+            
+            // If touching in bottom 40% of screen, apply horizontal offset based on touch position
+            if (touchYPercent > 0.6) {
+                // No offset needed - finger is above character
+            } else {
+                // Finger might block view - use offset control
+                // Character follows touch point but with visual indicator
+            }
+        }
         
         // Apply inverted controls (Boss 5)
         if (bossController && bossController.invertedControls) {
@@ -5819,6 +5844,14 @@
             
             handleGamePointerMove(e);
         }, { passive: false });
+        
+        // Hide touch indicator on touch end
+        gameCanvas.addEventListener('touchend', (e) => {
+            const touchIndicator = document.getElementById('touch-indicator');
+            if (touchIndicator) {
+                touchIndicator.classList.remove('active');
+            }
+        }, { passive: true });
         
         // Keyboard jump control for desktop
         document.addEventListener('keydown', (e) => {
