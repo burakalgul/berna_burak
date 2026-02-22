@@ -2590,18 +2590,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const hudHeight = document.querySelector('.game-hud')?.offsetHeight || 60;
         gameW = Math.min(rect.width, 600);
         gameH = rect.height - hudHeight - 20;
-        
-        // Touch area mode: reduce game height to leave space for touch controls
-        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
-        if (isTouchAreaMode) {
-            // Reduce game height by 30vh for touch control area
-            gameH = Math.min(gameH, window.innerHeight * 0.7 - hudHeight);
-        }
-        
         gameCanvas.width = gameW;
         gameCanvas.height = gameH;
         
         // Touch area mode: adjust character container and Burak position
+        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
         if (isTouchAreaMode) {
             const gameCharacters = document.querySelector('.game-characters');
             const burakChar = document.querySelector('.burak-char');
@@ -2613,23 +2606,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (burakChar) {
-                // Position Burak at bottom of canvas (15px from bottom)
-                burakChar.style.bottom = '15px';
+                // Position Burak at bottom of canvas (20px from bottom)
+                burakChar.style.bottom = '20px';
                 burakChar.style.marginBottom = '0';
-            }
-        } else {
-            // Reset positions when touch area mode is disabled
-            const gameCharacters = document.querySelector('.game-characters');
-            const burakChar = document.querySelector('.burak-char');
-            
-            if (gameCharacters) {
-                gameCharacters.style.height = '';
-                gameCharacters.style.maxHeight = '';
-            }
-            
-            if (burakChar) {
-                burakChar.style.bottom = '';
-                burakChar.style.marginBottom = '';
             }
         }
     }
@@ -4834,8 +4813,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Adjust collision area for touch mode - wider vertical range for easier catching
-            const catchVerticalRange = isTouchAreaMode ? 80 : 40; // Increased range for touch mode
-            const catchVerticalOffset = isTouchAreaMode ? 80 : 60; // Increased offset for touch mode
+            const catchVerticalRange = settings.touchArea ? 50 : 40; // Increased from 30 to 50
+            const catchVerticalOffset = settings.touchArea ? 40 : 60;
             
             if (h.y > burakTop - catchVerticalRange && h.y < burakTop + catchVerticalOffset && // Widened collision
                 Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
@@ -5954,15 +5933,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Draw HUD Stats (Canvas) - Adjust position for touch area mode
+        // Draw HUD Stats (Canvas)
         gameCtx.save();
         gameCtx.font = '14px Montserrat';
         gameCtx.fillStyle = 'rgba(255,255,255,0.7)';
         gameCtx.textAlign = 'left';
-        const bottomUIOffset = isTouchAreaMode ? 10 : 20; // Closer to bottom in touch mode
-        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - bottomUIOffset);
+        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - 20);
         gameCtx.textAlign = 'right';
-        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - bottomUIOffset);
+        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - 20);
         gameCtx.restore();
 
         // 2. Update DOM Position for GIF
@@ -6045,7 +6023,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         gameCtx.globalAlpha = 1.0;
 
-        // Wave Progress Bar (above ground line) - Adjust for touch area mode
+        // Wave Progress Bar (above ground line)
         if (!bossActive) {
             const config = getCurrentWaveConfig();
             const target = config.scoreTarget;
@@ -6053,8 +6031,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progress = Math.min(1, waveScoreEarned / target);
                 const barW = gameW - 40;
                 const barH = 6;
-                const progressBarOffset = isTouchAreaMode ? 8 : 18; // Closer to bottom in touch mode
-                const barY = gameH - progressBarOffset;
+                const barY = gameH - 18;
                 const barX = 20;
 
                 // Track background
