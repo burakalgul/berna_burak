@@ -947,13 +947,13 @@ body {
 }
 
 .game-overlay.touch-area-mode .game-characters {
-    height: 100vh;
-    max-height: 100vh;
+    height: 85vh;
+    max-height: 85vh;
 }
 
 .game-overlay.touch-area-mode .burak-char {
     bottom: 0px;
-    margin-bottom: 13vh;
+    margin-bottom: 2vh;
 }
 
 .game-overlay.touch-area-mode .game-wave-banner {
