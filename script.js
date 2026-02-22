@@ -2590,11 +2590,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const hudHeight = document.querySelector('.game-hud')?.offsetHeight || 60;
         gameW = Math.min(rect.width, 600);
         gameH = rect.height - hudHeight - 20;
+        
+        // Touch area mode: reduce game height to leave space for touch controls
+        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+        if (isTouchAreaMode) {
+            // Reduce game height by 30vh for touch control area
+            gameH = Math.min(gameH, window.innerHeight * 0.7 - hudHeight);
+        }
+        
         gameCanvas.width = gameW;
         gameCanvas.height = gameH;
         
         // Touch area mode: adjust character container and Burak position
-        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
         if (isTouchAreaMode) {
             const gameCharacters = document.querySelector('.game-characters');
             const burakChar = document.querySelector('.burak-char');
@@ -2606,9 +2613,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (burakChar) {
-                // Position Burak at bottom of canvas (20px from bottom)
-                burakChar.style.bottom = '20px';
+                // Position Burak at bottom of canvas (15px from bottom)
+                burakChar.style.bottom = '15px';
                 burakChar.style.marginBottom = '0';
+            }
+        } else {
+            // Reset positions when touch area mode is disabled
+            const gameCharacters = document.querySelector('.game-characters');
+            const burakChar = document.querySelector('.burak-char');
+            
+            if (gameCharacters) {
+                gameCharacters.style.height = '';
+                gameCharacters.style.maxHeight = '';
+            }
+            
+            if (burakChar) {
+                burakChar.style.bottom = '';
+                burakChar.style.marginBottom = '';
             }
         }
     }
@@ -4813,8 +4834,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Adjust collision area for touch mode - wider vertical range for easier catching
-            const catchVerticalRange = settings.touchArea ? 50 : 40; // Increased from 30 to 50
-            const catchVerticalOffset = settings.touchArea ? 40 : 60;
+            const catchVerticalRange = isTouchAreaMode ? 80 : 40; // Increased range for touch mode
+            const catchVerticalOffset = isTouchAreaMode ? 80 : 60; // Increased offset for touch mode
             
             if (h.y > burakTop - catchVerticalRange && h.y < burakTop + catchVerticalOffset && // Widened collision
                 Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
