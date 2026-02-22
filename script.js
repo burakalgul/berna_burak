@@ -3150,6 +3150,9 @@ document.addEventListener('DOMContentLoaded', () => {
         gameTime += dt * devSpeedMultiplier;
         gameFrameCount++;
 
+        // Check if touch area mode is active
+        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+
         // Boss 9: Process queued inputs (input lag)
         if (bossController && bossController.inputLag > 0) {
             const readyInputs = bossController.processInputQueue(Date.now());
