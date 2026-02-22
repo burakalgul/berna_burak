@@ -2592,6 +2592,25 @@ document.addEventListener('DOMContentLoaded', () => {
         gameH = rect.height - hudHeight - 20;
         gameCanvas.width = gameW;
         gameCanvas.height = gameH;
+        
+        // Touch area mode: adjust character container and Burak position
+        const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+        if (isTouchAreaMode) {
+            const gameCharacters = document.querySelector('.game-characters');
+            const burakChar = document.querySelector('.burak-char');
+            
+            if (gameCharacters) {
+                // Set character container to match canvas height
+                gameCharacters.style.height = gameH + 'px';
+                gameCharacters.style.maxHeight = gameH + 'px';
+            }
+            
+            if (burakChar) {
+                // Position Burak at bottom of canvas (20px from bottom)
+                burakChar.style.bottom = '20px';
+                burakChar.style.marginBottom = '0';
+            }
+        }
     }
 
     // ----------------------------
