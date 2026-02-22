@@ -942,17 +942,17 @@ body {
 
 /* Touch Area Mode - Adjust height and position, leave bottom for touch */
 .game-overlay.touch-area-mode #game-canvas {
-    height: 70vh;
-    max-height: 70vh;
+    height: calc(70vh - 60px); /* 70vh minus HUD height */
+    max-height: calc(70vh - 60px);
 }
 
 .game-overlay.touch-area-mode .game-characters {
-    height: 70vh;
-    max-height: 70vh;
+    height: calc(70vh - 60px);
+    max-height: calc(70vh - 60px);
 }
 
 .game-overlay.touch-area-mode .burak-char {
-    /* Position set by JavaScript for accurate positioning */
+    bottom: 5px; /* Very close to bottom of game area */
 }
 
 .game-overlay.touch-area-mode .game-wave-banner {
@@ -962,13 +962,13 @@ body {
 /* Touch Control Area */
 .touch-control-area {
     display: none;
-    position: absolute;
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 30vh;
-    background: linear-gradient(to top, rgba(100, 50, 150, 0.15), transparent);
-    border-top: 2px dashed rgba(255, 255, 255, 0.2);
+    height: calc(30vh + 60px); /* 30vh plus HUD height */
+    background: linear-gradient(to top, rgba(100, 50, 150, 0.2) 0%, rgba(100, 50, 150, 0.1) 50%, transparent 100%);
+    border-top: 2px dashed rgba(255, 255, 255, 0.4);
     pointer-events: none;
     z-index: 5;
 }

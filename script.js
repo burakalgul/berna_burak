@@ -5954,14 +5954,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Draw HUD Stats (Canvas)
+        // Draw HUD Stats (Canvas) - Adjust position for touch area mode
         gameCtx.save();
         gameCtx.font = '14px Montserrat';
         gameCtx.fillStyle = 'rgba(255,255,255,0.7)';
         gameCtx.textAlign = 'left';
-        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - 20);
+        const bottomUIOffset = isTouchAreaMode ? 10 : 20; // Closer to bottom in touch mode
+        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - bottomUIOffset);
         gameCtx.textAlign = 'right';
-        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - 20);
+        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - bottomUIOffset);
         gameCtx.restore();
 
         // 2. Update DOM Position for GIF
@@ -6044,7 +6045,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         gameCtx.globalAlpha = 1.0;
 
-        // Wave Progress Bar (above ground line)
+        // Wave Progress Bar (above ground line) - Adjust for touch area mode
         if (!bossActive) {
             const config = getCurrentWaveConfig();
             const target = config.scoreTarget;
@@ -6052,7 +6053,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progress = Math.min(1, waveScoreEarned / target);
                 const barW = gameW - 40;
                 const barH = 6;
-                const barY = gameH - 18;
+                const progressBarOffset = isTouchAreaMode ? 8 : 18; // Closer to bottom in touch mode
+                const barY = gameH - progressBarOffset;
                 const barX = 20;
 
                 // Track background
