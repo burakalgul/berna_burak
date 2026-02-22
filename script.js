@@ -46,7 +46,8 @@
         music: true,
         sfx: true,
         haptic: true,
-        particles: true
+        particles: true,
+        thumbSpace: true // New setting for thumb space
     };
     
     // Load settings from localStorage
@@ -61,6 +62,9 @@
         if (settingSfx) settingSfx.checked = settings.sfx;
         if (settingHaptic) settingHaptic.checked = settings.haptic;
         if (settingParticles) settingParticles.checked = settings.particles;
+        
+        const settingThumbSpace = document.getElementById('setting-thumb-space');
+        if (settingThumbSpace) settingThumbSpace.checked = settings.thumbSpace;
         
         // Apply settings to game
         mobileSettings.hapticEnabled = settings.haptic;
@@ -5758,16 +5762,26 @@
         
         e.preventDefault();
         const rect = gameCanvas.getBoundingClientRect();
-        let clientX;
+        let clientX, clientY;
         if (e.touches && e.touches.length > 0) {
             clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         } else {
             clientX = e.clientX;
+            clientY = e.clientY;
         }
         
         // Check if player is frozen (Boss 3)
         if (bossController && bossController.isPlayerFrozen()) {
             return; // No movement when frozen
+        }
+        
+        // Show touch indicator on mobile
+        const touchIndicator = document.getElementById('touch-indicator');
+        if (touchIndicator && e.touches && e.touches.length > 0) {
+            touchIndicator.classList.add('active');
+            touchIndicator.style.left = clientX + 'px';
+            touchIndicator.style.top = clientY + 'px';
         }
         
         // Calculate target position
@@ -5819,6 +5833,21 @@
             
             handleGamePointerMove(e);
         }, { passive: false });
+        
+        // Hide touch indicator on touch end
+        gameCanvas.addEventListener('touchend', (e) => {
+            const touchIndicator = document.getElementById('touch-indicator');
+            if (touchIndicator) {
+                touchIndicator.classList.remove('active');
+            }
+        }, { passive: true });
+        
+        gameCanvas.addEventListener('touchcancel', (e) => {
+            const touchIndicator = document.getElementById('touch-indicator');
+            if (touchIndicator) {
+                touchIndicator.classList.remove('active');
+            }
+        }, { passive: true });
         
         // Keyboard jump control for desktop
         document.addEventListener('keydown', (e) => {
