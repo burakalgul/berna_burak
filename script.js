@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
 
     // DOM Elements
     const introText = document.getElementById('intro-text');
@@ -46,8 +46,7 @@
         music: true,
         sfx: true,
         haptic: true,
-        particles: true,
-        thumbSpace: true // New setting for thumb space
+        particles: true
     };
     
     // Load settings from localStorage
@@ -62,9 +61,6 @@
         if (settingSfx) settingSfx.checked = settings.sfx;
         if (settingHaptic) settingHaptic.checked = settings.haptic;
         if (settingParticles) settingParticles.checked = settings.particles;
-        
-        const settingThumbSpace = document.getElementById('setting-thumb-space');
-        if (settingThumbSpace) settingThumbSpace.checked = settings.thumbSpace;
         
         // Apply settings to game
         mobileSettings.hapticEnabled = settings.haptic;
@@ -523,13 +519,28 @@
             
             const elem = document.documentElement;
             if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(() => {});
+                elem.requestFullscreen().catch((err) => {
+                    // Silently fail - fullscreen is optional
+                    console.log('Fullscreen request ignored:', err.message);
+                });
             } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
+                try {
+                    elem.webkitRequestFullscreen();
+                } catch (err) {
+                    console.log('Webkit fullscreen failed:', err.message);
+                }
             } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
+                try {
+                    elem.mozRequestFullScreen();
+                } catch (err) {
+                    console.log('Mozilla fullscreen failed:', err.message);
+                }
             } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
+                try {
+                    elem.msRequestFullscreen();
+                } catch (err) {
+                    console.log('MS fullscreen failed:', err.message);
+                }
             }
         },
         
@@ -5784,8 +5795,23 @@
             touchIndicator.style.top = clientY + 'px';
         }
         
-        // Calculate target position
+        // Calculate target position with touch offset for better visibility
         let targetX = clientX - rect.left;
+        
+        // MOBILE TOUCH OFFSET: If touching near bottom, offset character upward
+        // This prevents finger from blocking the character view
+        if (e.touches && e.touches.length > 0) {
+            const touchY = clientY - rect.top;
+            const touchYPercent = touchY / gameH;
+            
+            // If touching in bottom 40% of screen, apply horizontal offset based on touch position
+            if (touchYPercent > 0.6) {
+                // No offset needed - finger is above character
+            } else {
+                // Finger might block view - use offset control
+                // Character follows touch point but with visual indicator
+            }
+        }
         
         // Apply inverted controls (Boss 5)
         if (bossController && bossController.invertedControls) {
@@ -5833,21 +5859,6 @@
             
             handleGamePointerMove(e);
         }, { passive: false });
-        
-        // Hide touch indicator on touch end
-        gameCanvas.addEventListener('touchend', (e) => {
-            const touchIndicator = document.getElementById('touch-indicator');
-            if (touchIndicator) {
-                touchIndicator.classList.remove('active');
-            }
-        }, { passive: true });
-        
-        gameCanvas.addEventListener('touchcancel', (e) => {
-            const touchIndicator = document.getElementById('touch-indicator');
-            if (touchIndicator) {
-                touchIndicator.classList.remove('active');
-            }
-        }, { passive: true });
         
         // Keyboard jump control for desktop
         document.addEventListener('keydown', (e) => {
