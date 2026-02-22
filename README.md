@@ -74,6 +74,79 @@ Burak ve Berna'nın aşk hikayesini yaşayın. Yukarıdan düşen kalpleri yakal
 
 ---
 
+## 🛠️ Developer Komutları
+
+Oyun geliştirme ve test için tarayıcı konsolundan kullanılabilir komutlar:
+
+### Kullanım
+Tarayıcı konsolunu açın (F12) ve komutları yazın:
+
+```javascript
+// Yardım menüsünü göster
+dev.help()
+
+// Ölümsüzlük modu
+dev.godMode(true)      // Açık
+dev.godMode(false)     // Kapalı
+
+// Seviye kontrolü
+dev.nextLevel()        // Bir sonraki seviyeye geç
+dev.goToLevel(5)       // 5. seviyeye git (1-13 arası)
+dev.goToBoss()         // Boss savaşını başlat
+
+// Özel yetenekler
+dev.useSpecial("shield")   // Kalkan
+dev.useSpecial("slow")     // Yavaşlatma
+dev.useSpecial("magnet")   // Mıknatıs
+
+// Oyun değerleri
+dev.addLives(3)        // 3 can ekle
+dev.addScore(500)      // 500 puan ekle
+dev.setSpeed(2.0)      // Oyun hızını 2x yap (0.1-5 arası)
+
+// Boss kontrolü
+dev.damageBossBy(10)   // Boss'a 10 hasar ver
+dev.killBoss()         // Boss'u yok et
+
+// Diğer
+dev.clearHearts()      // Tüm kalpleri temizle
+dev.status()           // Oyun durumunu göster
+```
+
+### Komut Listesi
+
+| Komut | Açıklama | Örnek |
+|-------|----------|-------|
+| `dev.help()` | Yardım menüsünü göster | `dev.help()` |
+| `dev.godMode(bool)` | Ölümsüzlük modu | `dev.godMode(true)` |
+| `dev.resume()` | Oyunu devam ettir | `dev.resume()` |
+| `dev.nextLevel()` | Sonraki seviye | `dev.nextLevel()` |
+| `dev.goToLevel(n)` | İstediğin seviyeye git | `dev.goToLevel(8)` |
+| `dev.goToBoss()` | Boss başlat | `dev.goToBoss()` |
+| `dev.useSpecial(type)` | Özel yetenek kullan | `dev.useSpecial("shield")` |
+| `dev.addLives(n)` | Can ekle | `dev.addLives(2)` |
+| `dev.addScore(n)` | Skor ekle | `dev.addScore(1000)` |
+| `dev.damageBossBy(n)` | Boss'a hasar ver | `dev.damageBossBy(5)` |
+| `dev.killBoss()` | Boss'u yok et | `dev.killBoss()` |
+| `dev.clearHearts()` | Kalpleri temizle | `dev.clearHearts()` |
+| `dev.setSpeed(n)` | Hız ayarla | `dev.setSpeed(0.5)` |
+| `dev.status()` | Durum göster | `dev.status()` |
+
+### Özel Yetenekler
+- `shield` / `kalkan` - Kalkan aktif et
+- `slow` / `yavaslat` - Yavaşlatma aktif et
+- `magnet` / `mıknatıs` - Mıknatıs aktif et
+
+### Notlar
+- Komutlar sadece oyun başladıktan sonra çalışır
+- Oyun duraklatıldıysa `dev.resume()` ile devam ettir
+- Boss savaşı sırasında seviye atlanamaz
+- God mode aktifken hasar alınmaz
+- Hız çarpanı 0.1-5 arasında olmalı
+- `dev.status()` komutu pause durumunu da gösterir
+
+---
+
 ## 🛠️ Teknik Detaylar
 
 ### Dosya Yapısı

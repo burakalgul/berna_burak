@@ -201,6 +201,20 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    
+                    <div class="setting-item mobile-only">
+                        <div class="setting-info">
+                            <span class="setting-icon">👆</span>
+                            <div class="setting-text">
+                                <div class="setting-label">Touch Alan</div>
+                                <div class="setting-desc">Oyun alanını yukarı kaydır</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-touch-area">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -250,16 +264,6 @@
         <button id="game-close" class="game-close-btn">✕</button>
         <button id="game-pause" class="game-pause-btn">⏸️</button>
         
-        <!-- Boss Dialogue System -->
-        <div id="boss-dialogue" class="boss-dialogue hidden">
-            <div class="dialogue-container">
-                <div class="dialogue-character" id="dialogue-character">👤</div>
-                <div class="dialogue-bubble">
-                    <div class="dialogue-name" id="dialogue-name">Burak</div>
-                    <div class="dialogue-text" id="dialogue-text">...</div>
-                </div>
-            </div>
-        </div>
         <div class="game-hud">
             <div class="game-hud-item">
                 <span class="hud-label">CAN</span>
@@ -301,6 +305,8 @@
             <p class="paused-sub">Ne yapmak istersin?</p>
             <div class="paused-buttons">
                 <button id="pause-resume" class="game-btn game-btn-primary">▶️ Devam Et</button>
+                <button id="pause-stats" class="game-btn game-btn-secondary">📊 İstatistikler</button>
+                <button id="pause-settings" class="game-btn game-btn-secondary">⚙️ Ayarlar</button>
                 <button id="pause-quit" class="game-btn game-btn-secondary">❌ Çık</button>
             </div>
         </div>
@@ -413,6 +419,21 @@
     <audio id="game-music" loop>
         <!-- Placeholder for game music - will use Web Audio API for now -->
     </audio>
+
+    <!-- Cinema Video Overlay -->
+    <div id="cinema-overlay" class="cinema-overlay hidden">
+        <div class="cinema-bars cinema-bar-top"></div>
+        <div class="cinema-bars cinema-bar-bottom"></div>
+        <div class="film-countdown" id="film-countdown">
+            <div class="countdown-circle">
+                <span class="countdown-number" id="countdown-number">3</span>
+            </div>
+        </div>
+        <video id="ending-video" class="ending-video" preload="auto">
+            <source src="sonsahne.mp4" type="video/mp4">
+        </video>
+        <div id="ending-message" class="ending-message"></div>
+    </div>
 
     <!-- Background Canvas for Particles -->
     <canvas id="canvas"></canvas>

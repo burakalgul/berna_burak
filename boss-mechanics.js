@@ -311,16 +311,27 @@ class BossController {
         this.activeEffects.delete('ego_wall');
     }
 
-    drawEgoWall(ctx, gameW, gameH, bossX, bossY) {
+    drawEgoWall(ctx, gameW, gameH, bossX, bossY, bossHP, bossMaxHP) {
         if (!this.wallActive) return;
 
         ctx.save();
         
+        // Wall height based on boss HP (proportional)
+        const hpRatio = Math.max(0, bossHP / bossMaxHP);
+        const maxWallHeight = gameH * 0.6;
+        const wallHeight = maxWallHeight * hpRatio;
+        
+        // If wall is destroyed, disable it
+        if (wallHeight <= 0) {
+            this.disableEgoWall();
+            ctx.restore();
+            return;
+        }
+        
         // Draw massive wall
         const wallWidth = 100;
-        const wallHeight = gameH * 0.6;
         const wallX = bossX - wallWidth / 2;
-        const wallY = bossY;
+        const wallY = bossY; // Wall starts from boss position and grows downward
         
         // Wall gradient
         const gradient = ctx.createLinearGradient(wallX, wallY, wallX + wallWidth, wallY);
@@ -331,10 +342,11 @@ class BossController {
         ctx.fillStyle = gradient;
         ctx.fillRect(wallX, wallY, wallWidth, wallHeight);
         
-        // Wall cracks
+        // Wall cracks (more cracks as HP decreases)
+        const crackCount = Math.ceil(5 * (1 - hpRatio) + 2);
         ctx.strokeStyle = '#333333';
         ctx.lineWidth = 2;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < crackCount; i++) {
             ctx.beginPath();
             ctx.moveTo(wallX + Math.random() * wallWidth, wallY + Math.random() * wallHeight);
             ctx.lineTo(wallX + Math.random() * wallWidth, wallY + Math.random() * wallHeight);
@@ -346,18 +358,33 @@ class BossController {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000000';
-        ctx.fillText('🧱', bossX, bossY + wallHeight / 2);
+        ctx.fillText('🧱', bossX, wallY + wallHeight / 2);
+        
+        // HP indicator on wall
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        const hpText = `${Math.ceil(bossHP)}/${bossMaxHP}`;
+        ctx.strokeText(hpText, bossX, wallY + wallHeight - 20);
+        ctx.fillText(hpText, bossX, wallY + wallHeight - 20);
         
         ctx.restore();
     }
 
-    checkWallCollision(heartX, heartY, bossX, bossY) {
+    checkWallCollision(heartX, heartY, bossX, bossY, bossHP, bossMaxHP) {
         if (!this.wallActive) return false;
         
+        const hpRatio = Math.max(0, bossHP / bossMaxHP);
+        const maxWallHeight = this.ctx.gameH * 0.6;
+        const wallHeight = maxWallHeight * hpRatio;
+        
+        if (wallHeight <= 0) return false;
+        
         const wallWidth = 100;
-        const wallHeight = this.ctx.gameH * 0.6;
         const wallX = bossX - wallWidth / 2;
-        const wallY = bossY;
+        const wallY = bossY; // Wall starts from boss position
+
         
         return heartX > wallX && heartX < wallX + wallWidth &&
                heartY > wallY && heartY < wallY + wallHeight;
@@ -379,8 +406,8 @@ class BossController {
     }
 
     updatePoisonZones(dt, playerX, playerY, gameH) {
-        // Spawn poison zones less frequently for mobile (reduced from 0.05 to 0.015)
-        if (Math.random() < 0.015) { // Much less frequent spawning
+        // Spawn poison zones much less frequently (reduced by 1/6: 0.015 → 0.0025)
+        if (Math.random() < 0.0025) { // 1/6 of original rate
             // Spawn near player or random location
             const spawnX = Math.random() < 0.5 ? playerX + (Math.random() - 0.5) * 200 : Math.random() * 600;
             this.spawnPoisonZone(spawnX, gameH - 60);
@@ -442,7 +469,7 @@ class BossController {
     // Boss 9: Glitch - Input Lag
     enableGlitch() {
         this.activeEffects.add('glitch');
-        this.inputLag = 0.5; // 500ms delay
+        this.inputLag = 0.25; // 250ms delay (reduced from 500ms)
         this.glitchIntensity = 1.0;
     }
 

@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingSfx = document.getElementById('setting-sfx');
     const settingHaptic = document.getElementById('setting-haptic');
     const settingParticles = document.getElementById('setting-particles');
+    const settingTouchArea = document.getElementById('setting-touch-area');
     
     // How To Play Modal Elements
     const howtoModal = document.getElementById('howto-modal');
@@ -46,7 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         music: true,
         sfx: true,
         haptic: true,
-        particles: true
+        particles: true,
+        touchArea: false
     };
     
     // Load settings from localStorage
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settingSfx) settingSfx.checked = settings.sfx;
         if (settingHaptic) settingHaptic.checked = settings.haptic;
         if (settingParticles) settingParticles.checked = settings.particles;
+        if (settingTouchArea) settingTouchArea.checked = settings.touchArea;
         
         // Apply settings to game
         mobileSettings.hapticEnabled = settings.haptic;
@@ -131,12 +134,28 @@ document.addEventListener('DOMContentLoaded', () => {
             settings.music = e.target.checked;
             saveSettings();
             
-            if (settings.music && state === 'MAIN') {
-                bgMusic.play().catch(() => {});
-                isMusicPlaying = true;
+            if (settings.music) {
+                // If game is active (even if paused), start game music
+                if (gameActive) {
+                    startGameMusic();
+                    if (musicControl) musicControl.classList.add('playing');
+                } 
+                // If in main content (Stage 2), start bgMusic
+                else if (state === 'MAIN') {
+                    bgMusic.play().catch(() => {});
+                    isMusicPlaying = true;
+                    if (musicControl) musicControl.classList.add('playing');
+                }
             } else {
-                bgMusic.pause();
-                isMusicPlaying = false;
+                // Stop whichever music is playing
+                if (gameActive) {
+                    stopGameMusic();
+                    if (musicControl) musicControl.classList.remove('playing');
+                } else {
+                    bgMusic.pause();
+                    isMusicPlaying = false;
+                    if (musicControl) musicControl.classList.remove('playing');
+                }
             }
         });
     }
@@ -160,6 +179,23 @@ document.addEventListener('DOMContentLoaded', () => {
         settingParticles.addEventListener('change', (e) => {
             settings.particles = e.target.checked;
             saveSettings();
+        });
+    }
+    
+    if (settingTouchArea) {
+        settingTouchArea.addEventListener('change', (e) => {
+            settings.touchArea = e.target.checked;
+            saveSettings();
+            
+            // Apply touch area mode to game overlay
+            const gameOverlay = document.getElementById('game-overlay');
+            if (gameOverlay) {
+                if (settings.touchArea) {
+                    gameOverlay.classList.add('touch-area-mode');
+                } else {
+                    gameOverlay.classList.remove('touch-area-mode');
+                }
+            }
         });
     }
     
@@ -627,14 +663,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // -----------------------------------------------------------------
     if (musicControl) {
         musicControl.addEventListener('click', () => {
-            if (isMusicPlaying) {
-                bgMusic.pause();
-                musicControl.classList.remove('playing');
-                isMusicPlaying = false;
-            } else {
-                bgMusic.play();
-                musicControl.classList.add('playing');
-                isMusicPlaying = true;
+            // If game is active (even if paused), control game music
+            if (gameActive) {
+                if (gameMusicPlaying) {
+                    stopGameMusic();
+                    musicControl.classList.remove('playing');
+                } else {
+                    startGameMusic();
+                    musicControl.classList.add('playing');
+                }
+            } 
+            // Otherwise control main menu music
+            else {
+                if (isMusicPlaying) {
+                    bgMusic.pause();
+                    musicControl.classList.remove('playing');
+                    isMusicPlaying = false;
+                } else {
+                    bgMusic.play();
+                    musicControl.classList.add('playing');
+                    isMusicPlaying = true;
+                }
             }
         });
     }
@@ -1319,7 +1368,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Unified interaction handler
     function handleInteraction(e) {
         if (state !== 'MAIN') return;
-        if (gameActive) return; // Disable background interaction when game is on
+        
+        // Disable background interaction when game overlay is visible or game is active
+        if (gameActive) return;
+        if (gameOverlay && gameOverlay.classList.contains('active')) return;
 
         // Prevent background interaction if clicking on the main heart card
         if (e.target.closest('.heart-container')) return;
@@ -1417,6 +1469,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameSessionId = 0; // NEW: Track unique game sessions to prevent overlapping loops
     let gameScore = 0;
     let gameLives = 5; // Increased from 3 to 5 for better balance
+    let maxLives = 5; // Maximum lives (can be upgraded to 8)
     let gameCombo = 1;
     let gameConsecutiveCatches = 0;
     let gameAnimFrame = null;
@@ -1443,6 +1496,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let damageFlash = 0;
     let invulnerableTimer = 0; // NEW: Invulnerability timer
     let bernaAngryTimer = 0; // Berna anger timer for broken heart reaction
+
+    // --- PERFORMANCE OPTIMIZATION ---
+    const MAX_HEARTS = 50; // Maximum hearts on screen
+    const MAX_CATCH_EFFECTS = 30; // Maximum catch effects
+    const MAX_POWER_UPS = 2; // Maximum power-ups on screen
 
     // --- NEW: Love Blast State ---
     let loveBlastActive = false;
@@ -1529,6 +1587,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pause screen buttons
     const pauseResumeBtn = document.getElementById('pause-resume');
+    const pauseStatsBtn = document.getElementById('pause-stats');
+    const pauseSettingsBtn = document.getElementById('pause-settings');
     const pauseQuitBtn = document.getElementById('pause-quit');
 
     if (pauseResumeBtn) {
@@ -1538,6 +1598,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gamePausedScreen) gamePausedScreen.classList.remove('active');
             gameLoop(gameSessionId);
             playSound('combo');
+        });
+    }
+    
+    if (pauseStatsBtn) {
+        pauseStatsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStatsModal();
+        });
+    }
+    
+    if (pauseSettingsBtn) {
+        pauseSettingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (settingsModal) settingsModal.classList.add('active');
         });
     }
 
@@ -2071,7 +2145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             name: "Zaman Hırsızı ⏰",
             scoreTarget: 3200, // Reduced from 4500
-            spawnRate: 0.07,
+            spawnRate: 0.055, // Reduced from 0.07
             speedMul: 1.75, // Reduced from 2.0
             brokenWeight: 33, // Reduced from 50
             boss: {
@@ -2090,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             name: "Sıradanlık Devşiricisi 🌑",
             scoreTarget: 3600, // Reduced from 5000
-            spawnRate: 0.075,
+            spawnRate: 0.06, // Reduced from 0.075
             speedMul: 1.8, // Reduced from 2.1
             brokenWeight: 34, // Reduced from 55
             boss: {
@@ -2109,7 +2183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             name: "Kara Sevda 💔",
             scoreTarget: 4000, // Changed from Infinity to 4000
-            spawnRate: 0.08,
+            spawnRate: 0.065, // Reduced from 0.08
             speedMul: 1.8, // Reduced from 2.2
             brokenWeight: 35, // Reduced from 60
             boss: {
@@ -2130,13 +2204,13 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 1200, 
             spawnRate: 0.035, 
             speedMul: 1.25, 
-            brokenWeight: 10,
+            brokenWeight: 5, // Reduced from 10
             boss: { 
                 emoji: '🥰', 
                 color: '#ff69b4', 
                 ability: 'dreamy',
                 name: 'Rüya Gibi',
-                specialHeart: { emoji: '�', name: 'Pembe Bulut', damage: 1 },
+                specialHeart: { emoji: '☁️', name: 'Pembe Bulut', damage: 1 },
                 attacks: ['wave', 'float'],
                 description: 'Her an yeni bir anı'
             },
@@ -2149,7 +2223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 1500, 
             spawnRate: 0.04, 
             speedMul: 1.4, 
-            brokenWeight: 15,
+            brokenWeight: 8, // Reduced from 15
             boss: { 
                 emoji: '😌', 
                 color: '#94a3b8', 
@@ -2168,7 +2242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 2000, 
             spawnRate: 0.05, 
             speedMul: 1.6, 
-            brokenWeight: 25,
+            brokenWeight: 12, // Reduced from 25
             boss: { 
                 emoji: '😠', 
                 color: '#dc2626', 
@@ -2187,7 +2261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 2500, 
             spawnRate: 0.045, 
             speedMul: 1.4, 
-            brokenWeight: 10,
+            brokenWeight: 5, // Reduced from 10
             boss: { 
                 emoji: '😇', 
                 color: '#fbbf24', 
@@ -2206,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 3000, 
             spawnRate: 0.055, 
             speedMul: 1.7, 
-            brokenWeight: 20,
+            brokenWeight: 10, // Reduced from 20
             boss: { 
                 emoji: '😈', 
                 color: '#7c3aed', 
@@ -2225,7 +2299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 3500, 
             spawnRate: 0.06, 
             speedMul: 1.8, 
-            brokenWeight: 30,
+            brokenWeight: 15, // Reduced from 30
             boss: { 
                 emoji: '👿', 
                 color: '#991b1b', 
@@ -2244,7 +2318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 4000, 
             spawnRate: 0.05, 
             speedMul: 1.5, 
-            brokenWeight: 15,
+            brokenWeight: 8, // Reduced from 15
             boss: { 
                 emoji: '🦋', 
                 color: '#06b6d4', 
@@ -2263,7 +2337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 5000, 
             spawnRate: 0.055, 
             speedMul: 1.6, 
-            brokenWeight: 10,
+            brokenWeight: 5, // Reduced from 10
             boss: { 
                 emoji: '💎', 
                 color: '#38bdf8', 
@@ -2282,7 +2356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreTarget: 6000, 
             spawnRate: 0.06, 
             speedMul: 1.7, 
-            brokenWeight: 5,
+            brokenWeight: 3, // Reduced from 5
             boss: { 
                 emoji: '🤵', 
                 color: '#ffffff', 
@@ -2299,9 +2373,9 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             name: "Sonsuzluk ♾️", 
             scoreTarget: Infinity, 
-            spawnRate: 0.065, 
+            spawnRate: 0.055, // Reduced from 0.065
             speedMul: 1.9, 
-            brokenWeight: 30,
+            brokenWeight: 15, // Reduced from 30
             boss: { 
                 emoji: '♾️', 
                 color: '#a855f7', 
@@ -2350,6 +2424,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { emoji: '💫', type: 'double', size: 35, speed: 1.5, duration: 10, desc: 'Çift Puan' },
         { emoji: '🎯', type: 'precision', size: 35, speed: 1.5, duration: 8, desc: 'Otomatik Hedefleme' },
         { emoji: '🔥', type: 'streak', size: 35, speed: 1.5, duration: 12, desc: 'Kombo Koruyucu' },
+        { emoji: '💗', type: 'maxhp', size: 35, speed: 1.5, duration: 0, desc: 'Maksimum Can' }, // Permanent upgrade
     ];
 
     const GAME_OVER_MESSAGES = [
@@ -2488,6 +2563,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 heartEasterEgg.style.transform = 'scale(1.5) rotate(15deg)';
                 setTimeout(() => {
                     heartEasterEgg.style.transform = '';
+                    
+                    // Stop Stage 2 music (dilerimki.mp3)
+                    if (bgMusic && !bgMusic.paused) {
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0;
+                    }
+                    isMusicPlaying = false;
+                    if (musicControl) musicControl.classList.remove('playing');
+                    
                     // Show game overlay with main menu
                     if (gameOverlay) {
                         gameOverlay.classList.remove('hidden');
@@ -2544,6 +2628,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Catch Effect
     // ----------------------------
     function addCatchEffect(x, y, points, isGood) {
+        // PERFORMANCE: Limit catch effects
+        if (catchEffects.length >= MAX_CATCH_EFFECTS) {
+            // Remove oldest effects
+            catchEffects.splice(0, 5);
+        }
+
         const particleCount = isGood ? 12 : 6;
         for (let i = 0; i < particleCount; i++) {
             const angle = (Math.PI * 2 / particleCount) * i;
@@ -2607,40 +2697,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------
     // Boss Dialogue System
     // ----------------------------
-    function showBossDialogue(dialogues) {
-        const dialogueEl = document.getElementById('boss-dialogue');
-        const characterEl = document.getElementById('dialogue-character');
-        const nameEl = document.getElementById('dialogue-name');
-        const textEl = document.getElementById('dialogue-text');
-        
-        if (!dialogueEl || !dialogues || dialogues.length === 0) return;
-        
-        let currentIndex = 0;
-        
-        function showNext() {
-            if (currentIndex >= dialogues.length) {
-                // Hide dialogue after last message
-                setTimeout(() => {
-                    dialogueEl.classList.add('hidden');
-                }, 2500);
-                return;
-            }
-            
-            const dialogue = dialogues[currentIndex];
-            characterEl.textContent = dialogue.character;
-            nameEl.textContent = dialogue.name;
-            textEl.textContent = dialogue.text;
-            
-            dialogueEl.classList.remove('hidden');
-            
-            currentIndex++;
-            setTimeout(showNext, 3000); // Show each dialogue for 3 seconds
-        }
-        
-        // Start showing dialogues after boss intro
-        setTimeout(showNext, 2500);
-    }
-
     function checkWaveProgress() {
         const config = getCurrentWaveConfig();
         // Boss warning at 80% progress
@@ -2691,11 +2747,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const bossName = bossConfig.name || 'Boss';
         showWaveBanner(`💀 ${bossConfig.emoji} ${bossName} ${bossConfig.emoji} 💀`);
         playSound('boss');
-        
-        // Show boss dialogue if available
-        if (bossConfig.dialogue) {
-            showBossDialogue(bossConfig.dialogue);
-        }
         
         // Clear all hearts for dramatic effect
         fallingHearts = [];
@@ -2844,20 +2895,21 @@ document.addEventListener('DOMContentLoaded', () => {
         addCatchEffect(gameW / 2, gameH / 2, '🎉 BOSS YENİLDİ! 🎉', true);
         playSound('bossdefeat'); // Victory fanfare
         
-        // Optimized particle explosion (reduced for performance)
-        const particleCount = getMobileParticleCount(80); // 80 on desktop, 40 on mobile
+        // Highly optimized particle explosion (reduced significantly for performance)
+        const particleCount = getMobileParticleCount(30); // 30 on desktop, 15 on mobile (was 80/40)
+        const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
+        
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const force = 4 + Math.random() * 12;
-            const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
             catchEffects.push({
                 x: bossX,
                 y: renderBossY,
                 vx: Math.cos(angle) * force,
                 vy: Math.sin(angle) * force,
-                life: 1.5 + Math.random() * 0.5,
+                life: 1.0 + Math.random() * 0.3, // Shorter life (was 1.5-2.0)
                 color: ['#ffd700', '#ff69b4', '#00ffff', '#ff4444', '#00ff00'][Math.floor(Math.random() * 5)],
-                size: 3 + Math.random() * 4
+                size: 3 + Math.random() * 3 // Slightly smaller (was 3-7)
             });
         }
         
@@ -2881,10 +2933,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------
     function takeDamage() {
         console.log("takeDamage called, current lives:", gameLives);
+        
+        // God mode check
+        if (devGodMode) {
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ GOD MODE', false);
+            return;
+        }
+        
+        // Shield blocks all damage during its duration
         if (shieldActive) {
-            shieldActive = false;
-            shieldTimer = 0;
-            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ Kırıldı!', false);
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🛡️ Engellendi!', false);
             return;
         }
 
@@ -2918,7 +2976,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateLivesDisplay() {
         if (!gameLivesEl) return;
         let hearts = '';
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < maxLives; i++) { // Changed from 5 to maxLives
             hearts += i < gameLives ? '❤️' : '🖤';
         }
         gameLivesEl.textContent = hearts;
@@ -3026,6 +3084,36 @@ document.addEventListener('DOMContentLoaded', () => {
             streakProtectTimer = 12;
             addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🔥 Kombo Koruması!', true);
             playSound('combo');
+        } else if (type === 'maxhp') {
+            // 💗 MAX HP UPGRADE - Permanently increase max lives (up to 8)
+            if (maxLives < 8) {
+                maxLives++;
+                gameLives = Math.min(gameLives + 1, maxLives); // Add 1 life and heal
+                addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, `💗 Maksimum Can: ${maxLives}!`, true);
+                playSound('levelup');
+                updateLivesDisplay();
+                
+                // Visual celebration
+                for (let i = 0; i < 10; i++) {
+                    const angle = (Math.PI * 2 * i) / 10;
+                    catchEffects.push({
+                        x: burakX,
+                        y: gameH - BURAK_SPRITE_SIZE / 2,
+                        vx: Math.cos(angle) * 3,
+                        vy: Math.sin(angle) * 3 - 2,
+                        life: 1.0,
+                        color: '#ff69b4',
+                        size: 4,
+                        sparkle: true
+                    });
+                }
+            } else {
+                // Already at max - just heal fully
+                gameLives = maxLives;
+                addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '💗 Tam Can!', true);
+                playSound('combo');
+                updateLivesDisplay();
+            }
         }
     }
 
@@ -3041,11 +3129,26 @@ document.addEventListener('DOMContentLoaded', () => {
         gameAnimFrame = requestAnimationFrame(() => gameLoop(sessionId));
 
         const dt = slowMoActive ? 0.008 : 0.016;
-        gameTime += dt;
+        gameTime += dt * devSpeedMultiplier;
         gameFrameCount++;
 
+        // Boss 9: Process queued inputs (input lag)
+        if (bossController && bossController.inputLag > 0) {
+            const readyInputs = bossController.processInputQueue(Date.now());
+            readyInputs.forEach(input => {
+                if (input.targetX !== undefined) {
+                    // Apply the delayed movement
+                    const slowMultiplier = bossController.getSlowMultiplier();
+                    const baseSpeed = 0.3;
+                    const moveSpeed = baseSpeed * slowMultiplier;
+                    const dx = (input.targetX - burakX) * moveSpeed;
+                    burakX = Math.max(BURAK_SPRITE_SIZE / 2, Math.min(gameW - BURAK_SPRITE_SIZE / 2, burakX + dx));
+                }
+            });
+        }
+
         const config = getCurrentWaveConfig();
-        const speedMul = config.speedMul * (slowMoActive ? 0.4 : 1);
+        const speedMul = config.speedMul * (slowMoActive ? 0.4 : 1) * devSpeedMultiplier;
         const effect = config.effect || 'none';
         const centerX = gameW / 2;
         const centerY = gameH / 2;
@@ -3070,6 +3173,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Define burakTop early for use in boss abilities
         let burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        
+        // In touch area mode, the GIF is positioned lower than the canvas coordinate
+        // Canvas: 85vh, GIF visual position: ~87vh (100vh container - 13vh margin)
+        // Offset halos downward to match GIF visual position
+        const isTouchAreaMode = gameOverlay.classList.contains('touch-area-mode');
+        let burakVisualOffset = isTouchAreaMode ? gameH * 0.15 : 0;
 
         // ============================================
         // FINAL BOSS PHASE 3: PLATFORM CLIMBING
@@ -3202,9 +3311,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 gameCtx.restore();
                 
-                // Continuous particle explosion
-                if (gameFrameCount % 2 === 0) {
-                    for (let i = 0; i < 5; i++) {
+                // Continuous particle explosion (reduced for performance)
+                if (gameFrameCount % 4 === 0) { // Changed from % 2 to % 4
+                    const particleCount = isMobile ? 2 : 3; // Reduced from 5
+                    for (let i = 0; i < particleCount; i++) {
                         const angle = Math.random() * Math.PI * 2;
                         const force = 5 + Math.random() * 10;
                         catchEffects.push({
@@ -3227,6 +3337,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Reset boss controller effects
                     if (bossController) {
                         bossController.reset();
+                    }
+                    
+                    // Check if this was the final boss (Sonsuzluk - wave 20)
+                    if (currentWave >= WAVES.length) {
+                        // GAME COMPLETED! Show victory screen
+                        setTimeout(() => {
+                            showVictoryScreen();
+                        }, 1000);
+                        return;
                     }
                     
                     if (currentWave < WAVES.length) {
@@ -3264,8 +3383,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     bossHitFlash--;
                 }
                 
-                // Boss Movement Pattern
-                const baseSpeed = 1.5 + (currentWave * 0.3);
+                // Boss Movement Pattern (capped speed for better gameplay)
+                const baseSpeed = Math.min(1.5 + (currentWave * 0.08), 2.2); // Further reduced: capped at 2.2, much slower increase
                 bossX += bossDir * baseSpeed;
                 
                 // Phase-based movement changes
@@ -3281,17 +3400,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (bossX > gameW - 60) bossDir = -1;
                 if (bossX < 60) bossDir = 1;
                 
-                // Boss slowly descends (threatening approach)
-                const descentSpeed = 0.15 + (bossPhase * 0.05); // Faster descent in later phases
-                // Slower descent in landscape mode to give player more space
-                bossY += gameH < 500 ? descentSpeed * 0.6 : descentSpeed;
+                // Boss stays at fixed height (no descent)
+                // Only moves horizontally and bobs vertically
                 
                 // Knockback when hit (handled in damageBoss)
                 // Stay within bounds - adjusted for landscape mode
                 const minBossY = gameH < 500 ? 60 : 80;
-                const maxBossY = gameH < 500 ? gameH * 0.5 : gameH * 0.7; // Much higher limit in landscape
+                const maxBossY = gameH < 500 ? gameH * 0.5 : gameH * 0.7;
                 if (bossY < minBossY) bossY = minBossY;
-                if (bossY > maxBossY) bossY = maxBossY; // Don't go too low
+                if (bossY > maxBossY) bossY = maxBossY;
                 
                 // Vertical bobbing
                 const renderBossY = bossY + Math.sin(gameTime * 2) * 20;
@@ -3331,9 +3448,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Boss can only be damaged by special mechanics (reflect hearts, catch special hearts)
                 
                 // Boss Attack Patterns (Phase-based) - UNIQUE PER BOSS
-                let attackChance = 0.007 + (currentWave * 0.001);
-                if (bossPhase === 3) attackChance *= 2.5; // Critical phase attacks more
-                else if (bossPhase === 2) attackChance *= 1.5;
+                let attackChance = 0.005 + (currentWave * 0.0008); // Reduced from 0.007 + 0.001
+                if (bossPhase === 3) attackChance *= 2.0; // Reduced from 2.5
+                else if (bossPhase === 2) attackChance *= 1.3; // Reduced from 1.5
+                
+                // PERFORMANCE: Reduce attack chance if too many hearts
+                if (fallingHearts.length > MAX_HEARTS * 0.7) {
+                    attackChance *= 0.5;
+                }
+                if (fallingHearts.length >= MAX_HEARTS) {
+                    attackChance = 0; // Stop spawning
+                }
                 
                 // Boss Special Heart Spawning - NOW HANDLED BY BERNA
                 // Berna throws special hearts during boss fight
@@ -3349,7 +3474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bossController.updateRainEffect(fallingHearts, bossX, renderBossY);
                     
                     // Also spawn some broken hearts
-                    if (Math.random() < attackChance) {
+                    if (Math.random() < attackChance && fallingHearts.length < MAX_HEARTS) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 80,
                             y: renderBossY + 40,
@@ -3370,7 +3495,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bossController.updateLavaBombs(dt, fallingHearts, bossX, renderBossY, gameW, gameH);
                     
                     // Also spawn broken hearts
-                    attackChance *= 1.5;
+                    attackChance *= 1.2; // Reduced from 1.5
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 100,
@@ -3420,7 +3545,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bossController.applyWindPhysics(fallingHearts, gameTime);
                     
                     // Also spawn broken hearts with wind effect
-                    attackChance *= 1.3;
+                    attackChance *= 1.1; // Reduced from 1.3
                     if (Math.random() < attackChance) {
                         const windStrength = Math.sin(gameTime * 2) * 3;
                         fallingHearts.push({
@@ -3462,7 +3587,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     // Spawn broken hearts (harder to see)
-                    attackChance *= 1.4;
+                    attackChance *= 1.2; // Reduced from 1.4
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 120,
@@ -3496,7 +3621,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'gossip_snake') {
-                    // Boss 8: Gossip Snake - Poison DOT
+                    // Boss 8: Gossip Snake - Poison DOT only (ground hazards)
                     if (!bossController.activeEffects.has('gossip_snake')) {
                         bossController.enableGossipSnake();
                     }
@@ -3508,83 +3633,104 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(burakX, burakTop, '☠️ ZEHİR!', false);
                     }
                     
-                    // Spawn broken hearts more frequently
-                    attackChance *= 1.5;
-                    if (Math.random() < attackChance) {
-                        fallingHearts.push({
-                            x: bossX + (Math.random() - 0.5) * 100,
-                            y: renderBossY + 40,
-                            vy: 2.8,
-                            vx: (Math.random() - 0.5) * 2,
-                            type: { emoji: '💔', points: -1, size: 28, speed: 2.8, isBroken: true },
-                            rotation: 0,
-                            rotSpeed: 0.12
-                        });
-                    }
+                    // Snake hearts removed - only poison zones remain
                     
                 } else if (ability === 'glitch') {
-                    // Boss 9: Glitch - Input Lag
+                    // Boss 9: Glitch - Input Lag + Digital Corruption Hearts
                     if (!bossController.activeEffects.has('glitch')) {
                         bossController.enableGlitch();
                         addCatchEffect(gameW / 2, gameH / 2, '⚠️ GLITCH!', true);
                     }
                     
-                    // Spawn broken hearts
-                    attackChance *= 1.5;
+                    // Spawn GLITCH hearts (teleporting hearts)
+                    attackChance *= 1.2; // Reduced from 1.4
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 100,
                             y: renderBossY + 40,
-                            vy: 3.2,
-                            vx: (Math.random() - 0.5) * 2.5,
-                            type: { emoji: '💔', points: -1, size: 28, speed: 3.2, isBroken: true },
+                            vy: 3.0,
+                            vx: (Math.random() - 0.5) * 3,
+                            type: { emoji: '👾', points: -2, size: 32, speed: 3.0, isBroken: true },
                             rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: 0.2,
+                            glitchHeart: true, // Teleports randomly
+                            glitchTimer: 0
+                        });
+                    }
+                    
+                    // Spawn ERROR hearts (split into 2 when hit)
+                    if (Math.random() < attackChance * 0.4) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 80,
+                            y: renderBossY + 40,
+                            vy: 2.5,
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '⚠️', points: -1, size: 28, speed: 2.5, isBroken: true },
+                            rotation: 0,
                             rotSpeed: 0.15
                         });
                     }
                     
                 } else if (ability === 'time_thief') {
-                    // Boss 10: Time Thief - Bullet Time
+                    // Boss 10: Time Thief - Bullet Time + Clock Hearts
                     if (!bossController.activeEffects.has('time_thief')) {
                         bossController.enableTimeThief();
                     }
                     bossController.updateTimeScale(gameTime);
                     
-                    // Time scale is applied to NEW hearts only (not existing ones)
-                    // Existing hearts maintain their speed to prevent exponential acceleration
-                    
-                    // Spawn broken hearts with time-scaled speed
                     const timeScale = bossController.getTimeScale();
+                    
+                    // Spawn CLOCK hearts (speed changes randomly)
+                    attackChance *= 1.1; // Reduced from 1.3
                     if (Math.random() < attackChance) {
+                        const randomSpeed = timeScale * (Math.random() < 0.5 ? 0.5 : 3.0); // Very slow or very fast
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 80,
                             y: renderBossY + 40,
-                            vy: 2.4 * timeScale,
+                            vy: 2.0 * randomSpeed,
                             vx: (Math.random() - 0.5) * 1.5,
-                            type: { emoji: '💔', points: -1, size: 28, speed: 2.4, isBroken: true },
+                            type: { emoji: '⏰', points: -2, size: 30, speed: 2.0, isBroken: true },
                             rotation: 0,
-                            rotSpeed: 0.1
+                            rotSpeed: 0.1 * randomSpeed,
+                            timeHeart: true
+                        });
+                    }
+                    
+                    // Spawn HOURGLASS hearts (reverse gravity)
+                    if (Math.random() < attackChance * 0.3) {
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 100,
+                            y: renderBossY + 40,
+                            vy: -1.5, // Goes UP!
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '⏳', points: -3, size: 32, speed: 1.5, isBroken: true },
+                            rotation: Math.PI,
+                            rotSpeed: -0.08,
+                            reverseGravity: true
                         });
                     }
                     
                 } else if (ability === 'routine') {
-                    // Boss 11: Routine - Grayscale Mode
+                    // Boss 11: Routine - Grayscale Mode + Monotone Hearts
                     if (!bossController.activeEffects.has('routine')) {
                         bossController.enableRoutine();
                         addCatchEffect(gameW / 2, gameH / 2, '⬜ RENKLER KAYBOLDU!', true);
                     }
                     
-                    // Spawn broken hearts (hard to distinguish)
-                    attackChance *= 1.3;
+                    // Spawn GRAY hearts (all look the same - hard to distinguish)
+                    attackChance *= 0.9; // Further reduced from 1.2 to make it easier
                     if (Math.random() < attackChance) {
+                        const heartTypes = ['⚫', '⚪', '🖤', '🤍', '◼️', '◻️'];
+                        const randomHeart = heartTypes[Math.floor(Math.random() * heartTypes.length)];
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 90,
                             y: renderBossY + 40,
                             vy: 2.7,
                             vx: (Math.random() - 0.5) * 1.8,
-                            type: { emoji: '💔', points: -1, size: 28, speed: 2.7, isBroken: true },
+                            type: { emoji: randomHeart, points: -2, size: 28, speed: 2.7, isBroken: true },
                             rotation: 0,
-                            rotSpeed: 0.11
+                            rotSpeed: 0.11,
+                            grayHeart: true
                         });
                     }
                     
@@ -3596,17 +3742,77 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(gameW / 2, gameH / 2, '💀 FİNAL BOSS!', true);
                     }
                     
-                    // Phase 1: Wind (like Boss 4)
+                    // Phase 1: SHADOW WAVE - Dark hearts with wind
                     if (bossPhase === 1) {
                         bossController.applyWindPhysics(fallingHearts, gameTime);
+                        
+                        attackChance *= 1.5; // Reduced from 1.8
+                        if (Math.random() < attackChance) {
+                            const windStrength = Math.sin(gameTime * 2) * 3;
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 120,
+                                y: renderBossY + 40,
+                                vy: 3.0,
+                                vx: windStrength + (Math.random() - 0.5) * 2,
+                                type: { emoji: '🌑', points: -3, size: 32, speed: 3.0, isBroken: true },
+                                rotation: 0,
+                                rotSpeed: 0.15,
+                                shadowHeart: true
+                            });
+                        }
+                        
+                        // Spawn VOID hearts (black holes that pull nearby hearts)
+                        if (Math.random() < attackChance * 0.2) {
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 100,
+                                y: renderBossY + 40,
+                                vy: 2.0,
+                                vx: 0,
+                                type: { emoji: '⚫', points: -5, size: 40, speed: 2.0, isBroken: true },
+                                rotation: 0,
+                                rotSpeed: 0.3,
+                                voidHeart: true,
+                                pullRadius: 80
+                            });
+                        }
                     }
-                    // Phase 2: Fog (like Boss 6)
+                    // Phase 2: NIGHTMARE FOG - Invisible hearts
                     else if (bossPhase === 2) {
                         if (!bossController.fogActive) {
                             bossController.enableFogForgetting();
                         }
+                        
+                        attackChance *= 1.6; // Reduced from 2.0
+                        if (Math.random() < attackChance) {
+                            fallingHearts.push({
+                                x: bossX + (Math.random() - 0.5) * 100,
+                                y: renderBossY + 40,
+                                vy: 3.2,
+                                vx: (Math.random() - 0.5) * 2.5,
+                                type: { emoji: '👻', points: -3, size: 30, speed: 3.2, isBroken: true },
+                                rotation: 0,
+                                rotSpeed: 0.12,
+                                ghostHeart: true,
+                                opacity: 0.3 // Nearly invisible
+                            });
+                        }
+                        
+                        // Spawn CURSE hearts (spiral pattern)
+                        if (Math.random() < attackChance * 0.3) {
+                            const angle = gameTime * 2;
+                            fallingHearts.push({
+                                x: bossX + Math.cos(angle) * 80,
+                                y: renderBossY + 40,
+                                vy: 2.5,
+                                vx: Math.sin(angle) * 2,
+                                type: { emoji: '💀', points: -4, size: 34, speed: 2.5, isBroken: true },
+                                rotation: angle,
+                                rotSpeed: 0.2,
+                                curseHeart: true
+                            });
+                        }
                     }
-                    // Phase 3: Ultimate - Berna trapped, platform climbing
+                    // Phase 3: FINAL STAND - Platform climbing, no hearts
                     else if (bossPhase === 3) {
                         bernaOpacity = 0.3; // Berna trapped in crystal
                         bossController.bernaTrapped = true;
@@ -3623,23 +3829,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             }, 1500);
                         }
                         
-                        // No hearts spawn in phase 3
-                    }
-                    
-                    // Spawn broken hearts (phases 1-2 only)
-                    if (bossPhase < 3) {
-                        attackChance *= 2.0; // Final boss is aggressive
-                        if (Math.random() < attackChance) {
-                            const windStrength = bossPhase === 1 ? Math.sin(gameTime * 2) * 3 : 0;
-                            fallingHearts.push({
-                                x: bossX + (Math.random() - 0.5) * 120,
-                                y: renderBossY + 40,
-                                vy: 3.5,
-                                vx: windStrength + (Math.random() - 0.5) * 3,
-                                type: { emoji: '💔', points: -1, size: 28, speed: 3.5, isBroken: true },
-                                rotation: Math.random() * Math.PI * 2,
-                                rotSpeed: 0.18
-                            });
+                        // Spawn DESPAIR hearts (falling from platforms)
+                        if (Math.random() < 0.01) {
+                            const platforms = bossController.finalBossPlatforms || [];
+                            if (platforms.length > 0) {
+                                const randomPlatform = platforms[Math.floor(Math.random() * platforms.length)];
+                                fallingHearts.push({
+                                    x: randomPlatform.x + Math.random() * randomPlatform.width,
+                                    y: randomPlatform.y,
+                                    vy: 2.0,
+                                    vx: 0,
+                                    type: { emoji: '🗡️', points: -5, size: 36, speed: 2.0, isBroken: true },
+                                    rotation: Math.PI / 4,
+                                    rotSpeed: 0.1
+                                });
+                            }
                         }
                     }
                     
@@ -3681,11 +3885,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     fallingHearts.forEach(h => h.vx += windPower * 0.02);
                     
                 } else if (ability === 'angry') {
-                    // Wave 5: Angry - Rage mode with lightning bursts
-                    attackChance *= 2.5;
-                    const isRage = Math.random() < 0.015;
+                    // Wave 15: Angry - Rage mode with lightning bursts (OPTIMIZED)
+                    attackChance *= 0.75; // Halved from 1.5 for better balance
+                    const isRage = Math.random() < 0.004; // Halved from 0.008
                     if (Math.random() < attackChance || isRage) {
-                        const count = isRage ? 6 : 2;
+                        const count = isRage ? 2 : 1; // Halved from 4 and 2
                         for (let i = 0; i < count; i++) {
                             fallingHearts.push({
                                 x: bossX + (Math.random() - 0.5) * 150,
@@ -3697,9 +3901,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 rotSpeed: 0.2
                             });
                         }
-                        // Lightning effect
+                        // Lightning effect (reduced particles)
                         if (isRage) {
-                            for (let i = 0; i < 10; i++) {
+                            const lightningCount = isMobile ? 3 : 4; // Halved from 5 and 8
+                            for (let i = 0; i < lightningCount; i++) {
                                 catchEffects.push({
                                     x: bossX + (Math.random() - 0.5) * 100,
                                     y: renderBossY,
@@ -3767,8 +3972,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                 } else if (ability === 'demon') {
                     // Wave 8: Demon - Hellfire and chaos
-                    attackChance *= 3.0;
-                    const isHellfire = Math.random() < 0.02;
+                    attackChance *= 2.2; // Reduced from 3.0
+                    const isHellfire = Math.random() < 0.015; // Reduced from 0.02
                     if (Math.random() < attackChance || isHellfire) {
                         const count = isHellfire ? 8 : 3;
                         for (let i = 0; i < count; i++) {
@@ -3783,9 +3988,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 rotSpeed: 0.2
                             });
                         }
-                        // Fire particles
+                        // Fire particles (optimized)
                         if (isHellfire) {
-                            for (let i = 0; i < 20; i++) {
+                            for (let i = 0; i < 10; i++) { // Reduced from 20 to 10
                                 catchEffects.push({
                                     x: bossX,
                                     y: renderBossY,
@@ -3906,8 +4111,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                 } else if (ability === 'eternal') {
                     // Wave 12: Eternal - Cosmic chaos
-                    attackChance *= 3.5;
-                    const isCosmic = Math.random() < 0.025;
+                    attackChance *= 2.5; // Reduced from 3.5
+                    const isCosmic = Math.random() < 0.018; // Reduced from 0.025
                     if (Math.random() < attackChance || isCosmic) {
                         const count = isCosmic ? 12 : 4;
                         for (let i = 0; i < count; i++) {
@@ -3977,19 +4182,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         function drawBossHPBar() {
             const bossConfig = WAVES[currentWave - 1]?.boss || { emoji: '💔', color: '#ff4444' };
-            const barWidth = gameW * 0.6;
-            const barHeight = 20;
+            
+            // Compact design: thin bar at top of canvas
+            const barWidth = gameW * 0.85;
+            const barHeight = 12;
             const barX = (gameW - barWidth) / 2;
-            const barY = 20;
+            // Bar at top of canvas (canvas starts below HUD)
+            const barY = 8;
             
             gameCtx.save();
             
-            // Background
-            gameCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            gameCtx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
-            
-            // HP Bar background
-            gameCtx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            // HP Bar background with rounded corners effect
+            gameCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             gameCtx.fillRect(barX, barY, barWidth, barHeight);
             
             // HP Bar fill (color based on phase)
@@ -4012,23 +4216,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Border
-            gameCtx.strokeStyle = '#ffffff';
-            gameCtx.lineWidth = 2;
+            gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            gameCtx.lineWidth = 1;
             gameCtx.strokeRect(barX, barY, barWidth, barHeight);
             
-            // Boss name and HP text
-            gameCtx.font = 'bold 14px Montserrat';
+            // Boss label - compact, on the left side of bar
+            gameCtx.font = 'bold 10px Montserrat';
             gameCtx.fillStyle = '#ffffff';
-            gameCtx.textAlign = 'center';
-            gameCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            gameCtx.textAlign = 'left';
+            gameCtx.textBaseline = 'middle';
+            gameCtx.shadowColor = 'rgba(0, 0, 0, 1)';
             gameCtx.shadowBlur = 4;
-            gameCtx.fillText(`${bossConfig.emoji} BOSS ${bossConfig.emoji}`, gameW / 2, barY - 10);
-            gameCtx.fillText(`${bossHP} / ${bossMaxHP}`, gameW / 2, barY + barHeight / 2 + 5);
+            gameCtx.fillText(`${bossConfig.emoji} BOSS`, barX + 5, barY + barHeight / 2);
             
-            // Kinetic Charge Bar (Boss 4 only)
+            // HP text - on the right side of bar
+            gameCtx.textAlign = 'right';
+            gameCtx.fillStyle = '#ffffff';
+            gameCtx.fillText(`${bossHP}/${bossMaxHP}`, barX + barWidth - 5, barY + barHeight / 2);
+            
+            // Kinetic Charge Bar (Boss 4 only) - even more compact
             if (bossConfig.ability === 'windy_day' && bossController.kineticCharge > 0) {
-                const chargeBarY = barY + barHeight + 15;
-                const chargeBarHeight = 10;
+                const chargeBarY = barY + barHeight + 3;
+                const chargeBarHeight = 6;
                 const chargePercent = bossController.kineticCharge / 100;
                 
                 // Background
@@ -4043,14 +4252,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameCtx.fillRect(barX, chargeBarY, barWidth * chargePercent, chargeBarHeight);
                 
                 // Border
-                gameCtx.strokeStyle = '#ffffff';
+                gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
                 gameCtx.lineWidth = 1;
                 gameCtx.strokeRect(barX, chargeBarY, barWidth, chargeBarHeight);
                 
-                // Text
-                gameCtx.font = 'bold 10px Montserrat';
+                // Text - smaller
+                gameCtx.font = 'bold 7px Montserrat';
                 gameCtx.fillStyle = '#ffeb3b';
-                gameCtx.fillText('⚡ KİNETİK ŞARJ', gameW / 2, chargeBarY - 3);
+                gameCtx.textAlign = 'center';
+                gameCtx.fillText('⚡ KİNETİK', gameW / 2, chargeBarY + chargeBarHeight / 2);
             }
             
             gameCtx.restore();
@@ -4293,14 +4503,16 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.fillRect(0, 0, gameW, gameH);
         }
 
-        // Move Berna
-        const bernaSpeed = 1.0 + (currentWave - 1) * 0.3;
+        // Move Berna (capped speed for better gameplay)
+        const bernaSpeed = Math.min(1.0 + (currentWave - 1) * 0.08, 1.8); // Further reduced: capped at 1.8, much slower increase
         bernaX += bernaDir * bernaSpeed;
         if (bernaX > gameW - BERNA_SPRITE_SIZE / 2) bernaDir = -1;
         if (bernaX < BERNA_SPRITE_SIZE / 2) bernaDir = 1;
         
         // Calculate Berna Y base position (used for both rendering and heart spawning)
-        const bernaYBase = gameH < 500 ? Math.min(20, gameH * 0.05) : 20; // Lower in landscape
+        // Position below boss health bar (bar + spacing = ~30px)
+        const hudOffset = isTouchAreaMode ? 45 : 0; // More offset to clear boss bar
+        const bernaYBase = (gameH < 500 ? Math.min(20, gameH * 0.05) : 20) + hudOffset;
 
         // Apply DOM transforms for Berna (GIF support + Performance)
         if (bernaEl) {
@@ -4316,10 +4528,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     bernaOpacity = 0.7 + (0.3 * (1 - bossDefeatedTimer / 3.0));
                 }
                 bernaEl.style.opacity = bernaOpacity;
-                bernaEl.style.transition = 'opacity 0.5s ease';
+                // Only set transition once, not every frame
+                if (!bernaEl.dataset.transitionSet) {
+                    bernaEl.style.transition = 'opacity 0.5s ease';
+                    bernaEl.dataset.transitionSet = 'true';
+                }
             } else {
                 // Normal gameplay: Fully visible
                 bernaEl.style.opacity = 1;
+                // Remove transition in normal gameplay
+                if (bernaEl.dataset.transitionSet) {
+                    bernaEl.style.transition = 'none';
+                    delete bernaEl.dataset.transitionSet;
+                }
             }
             
             // 1. Floating bounce
@@ -4376,7 +4597,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Spawn hearts from Berna
         if (!waveTransitioning) {
             let shouldSpawn = false;
-            let spawnChance = config.spawnRate;
+            let spawnChance = 0.02; // Fixed spawn rate - reduced for better gameplay (was 0.035)
             
             // During boss fight: Much rarer special heart spawns
             if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
@@ -4429,29 +4650,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                fallingHearts.push({
-                    x: bernaX + (Math.random() - 0.5) * 40,
-                    y: bernaYBase + BERNA_SPRITE_SIZE,
-                    vy: type.speed * speedMul * (0.8 + Math.random() * 0.4),
-                    vx: (Math.random() - 0.5) * 0.8,
-                    type: type,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotSpeed: (Math.random() - 0.5) * 0.05
-                });
+                // PERFORMANCE: Don't spawn if too many hearts
+                if (fallingHearts.length >= MAX_HEARTS) {
+                    // Skip spawning
+                } else {
+                    fallingHearts.push({
+                        x: bernaX + (Math.random() - 0.5) * 40,
+                        y: bernaYBase + BERNA_SPRITE_SIZE,
+                        vy: type.speed * Math.min(speedMul, 1.2) * (0.8 + Math.random() * 0.4),
+                        vx: (Math.random() - 0.5) * 0.8,
+                        type: type,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 0.05
+                    });
+                }
             }
         }
 
-        // Spawn power-ups (rare, suppressed during boss fight)
-        if (!waveTransitioning && !bossActive && Math.random() < 0.003 && gamePowerUps.length < 1) {
-            const pu = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
-            gamePowerUps.push({
-                x: Math.random() * (gameW - 80) + 40,
-                y: -30,
-                vy: pu.speed,
-                type: pu,
-                rotation: 0,
-                glow: 0
-            });
+        // Spawn power-ups
+        if (!waveTransitioning && gamePowerUps.length < MAX_POWER_UPS) {
+            let spawnChance;
+            
+            if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
+                // During boss fight: Much rarer (40% of normal rate)
+                spawnChance = 0.002; // 0.005 * 0.4
+            } else {
+                // Normal gameplay: Regular rate
+                spawnChance = 0.005;
+            }
+            
+            if (Math.random() < spawnChance) {
+                // Filter available power-ups based on game state
+                let availablePowerUps = POWERUP_TYPES.filter(pu => {
+                    // Don't spawn maxhp if already at max (8 lives)
+                    if (pu.type === 'maxhp' && maxLives >= 8) return false;
+                    return true;
+                });
+                
+                if (availablePowerUps.length > 0) {
+                    const pu = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
+                    console.log('Power-up spawned:', pu.type, pu.emoji);
+                    gamePowerUps.push({
+                        x: Math.random() * (gameW - 80) + 40,
+                        y: -30,
+                        vy: pu.speed,
+                        type: pu,
+                        rotation: 0,
+                        glow: 0
+                    });
+                }
+            }
         }
 
         // Update & draw falling hearts
@@ -4463,6 +4711,49 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!h || h.x === undefined || h.y === undefined || h.vx === undefined || h.vy === undefined) {
                 fallingHearts.splice(i, 1);
                 continue;
+            }
+
+            // SPECIAL HEART BEHAVIORS (Boss 8-12)
+            
+            // Snake Pattern (Boss 8)
+            if (h.snakePattern) {
+                h.vx = Math.cos(gameTime * 3 + h.y * 0.05) * 3;
+            }
+            
+            // Glitch Teleport (Boss 9)
+            if (h.glitchHeart) {
+                h.glitchTimer = (h.glitchTimer || 0) + dt;
+                if (h.glitchTimer > 0.5 && Math.random() < 0.05) {
+                    h.x = Math.random() * gameW;
+                    h.glitchTimer = 0;
+                    // Visual glitch effect
+                    addCatchEffect(h.x, h.y, '⚡', false);
+                }
+            }
+            
+            // Reverse Gravity (Boss 10)
+            if (h.reverseGravity) {
+                h.vy -= 0.1; // Goes up instead of down
+                if (h.y < -50) {
+                    fallingHearts.splice(i, 1);
+                    continue;
+                }
+            }
+            
+            // Void Heart - Pull nearby hearts (Boss 12)
+            if (h.voidHeart && h.pullRadius) {
+                for (let j = 0; j < fallingHearts.length; j++) {
+                    if (i !== j) {
+                        const other = fallingHearts[j];
+                        const dx = h.x - other.x;
+                        const dy = h.y - other.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < h.pullRadius && dist > 0) {
+                            other.vx += (dx / dist) * 0.3;
+                            other.vy += (dy / dist) * 0.3;
+                        }
+                    }
+                }
             }
 
             // Wind & Wobble effects
@@ -4506,7 +4797,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
             
-            if (h.y > burakTop - 40 && h.y < burakTop + 60 && // Widened collision
+            // Adjust collision area for touch mode - wider vertical range for easier catching
+            const catchVerticalRange = settings.touchArea ? 50 : 40; // Increased from 30 to 50
+            const catchVerticalOffset = settings.touchArea ? 40 : 60;
+            
+            if (h.y > burakTop - catchVerticalRange && h.y < burakTop + catchVerticalOffset && // Widened collision
                 Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
 
                 // Rain drops (Boss 1) - Don't damage, just slow
@@ -4571,9 +4866,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (h.type.isGold) {
                         addCatchEffect(h.x, burakTop, '+' + earned + ' 🥇', true);
                         playSound('diamond');
-                        // Golden sparkle burst
-                        for (let s = 0; s < 8; s++) {
-                            const angle = (Math.PI * 2 / 8) * s;
+                        // Golden sparkle burst (optimized)
+                        for (let s = 0; s < 5; s++) { // Reduced from 8 to 5
+                            const angle = (Math.PI * 2 / 5) * s;
                             catchEffects.push({
                                 x: h.x, y: burakTop,
                                 vx: Math.cos(angle) * 4,
@@ -4638,15 +4933,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
                             
-                            // Explosion at boss position
-                            for (let i = 0; i < 15; i++) {
-                                const angle = (Math.PI * 2 / 15) * i;
+                            // Explosion at boss position (optimized)
+                            for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
+                                const angle = (Math.PI * 2 / 8) * i;
                                 catchEffects.push({
                                     x: bossX,
                                     y: bossY,
                                     vx: Math.cos(angle) * 6,
                                     vy: Math.sin(angle) * 6,
-                                    life: 1.2,
+                                    life: 1.0, // Reduced from 1.2
                                     color: '#ffeb3b',
                                     size: 4,
                                     sparkle: true
@@ -4661,9 +4956,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             bossController.lavaBombs = []; // Clear all lava bombs
                             addCatchEffect(burakX, burakTop - 30, '💧 Ateş Söndürüldü!', true);
                             
-                            // Water splash effect
-                            for (let i = 0; i < 20; i++) {
-                                const angle = (Math.PI * 2 / 20) * i;
+                            // Water splash effect (optimized)
+                            for (let i = 0; i < 10; i++) { // Reduced from 20 to 10
+                                const angle = (Math.PI * 2 / 10) * i;
                                 catchEffects.push({
                                     x: bossX,
                                     y: bossY,
@@ -4675,8 +4970,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
                             
-                            // Steam particles
-                            for (let i = 0; i < 10; i++) {
+                            // Steam particles (optimized)
+                            for (let i = 0; i < 5; i++) { // Reduced from 10 to 5
                                 catchEffects.push({
                                     x: bossX + (Math.random() - 0.5) * 80,
                                     y: bossY + (Math.random() - 0.5) * 80,
@@ -4708,8 +5003,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
                             
-                            // Warm steam
-                            for (let i = 0; i < 10; i++) {
+                            // Warm steam (optimized)
+                            for (let i = 0; i < 5; i++) { // Reduced from 10 to 5
                                 catchEffects.push({
                                     x: burakX,
                                     y: burakTop,
@@ -4729,9 +5024,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Wind effect is already in bossController, just visual feedback
                             addCatchEffect(burakX, burakTop - 30, '⚡ Rüzgar Durdu!', true);
                             
-                            // Lightning burst effect
-                            for (let i = 0; i < 20; i++) {
-                                const angle = (Math.PI * 2 / 20) * i;
+                            // Lightning burst effect (optimized)
+                            for (let i = 0; i < 10; i++) { // Reduced from 20 to 10
+                                const angle = (Math.PI * 2 / 10) * i;
                                 catchEffects.push({
                                     x: burakX,
                                     y: burakTop,
@@ -4744,9 +5039,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
                             
-                            // Energy waves to boss
-                            for (let i = 0; i < 15; i++) {
-                                const t = i / 15;
+                            // Energy waves to boss (optimized)
+                            for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
+                                const t = i / 8;
                                 catchEffects.push({
                                     x: burakX + (bossX - burakX) * t,
                                     y: burakTop + (bossY - burakTop) * t,
@@ -4808,35 +5103,37 @@ document.addEventListener('DOMContentLoaded', () => {
                             damageFlash = 0.5;
                             
                         } else if (ability === 'ego_wall') {
-                            // Boss 7: Çekiç (Hammer) - Breaks wall
-                            bossController.disableEgoWall();
-                            addCatchEffect(burakX, burakTop - 30, '🔨 Duvar Yıkıldı!', true);
+                            // Boss 7: Çekiç (Hammer) - Damages wall (boss HP)
+                            const hammerDamage = bossConfig.specialHeart?.damage || 1;
+                            damageBoss(hammerDamage, 'hammer');
                             
-                            // Wall debris explosion
-                            for (let i = 0; i < 35; i++) {
+                            addCatchEffect(burakX, burakTop - 30, `🔨 -${hammerDamage} Duvar!`, true);
+                            
+                            // Wall debris explosion (optimized)
+                            for (let i = 0; i < 15; i++) { // Reduced from 35 to 15
                                 catchEffects.push({
                                     x: bossX,
-                                    y: bossY,
-                                    vx: (Math.random() - 0.5) * 12,
-                                    vy: (Math.random() - 0.5) * 12,
-                                    life: 1.5,
+                                    y: bossY + (gameH * 0.3), // Middle of wall
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: (Math.random() - 0.5) * 8,
+                                    life: 1.0,
                                     color: ['#888', '#666', '#555'][Math.floor(Math.random() * 3)],
-                                    size: 7,
+                                    size: 5,
                                     sparkle: false
                                 });
                             }
                             
                             // Screen shake
-                            bossHitFlash = 15;
+                            bossHitFlash = 10;
                             damageFlash = 0.4;
                             
                         } else if (ability === 'gossip_snake') {
                             // Boss 8: Kulaklık (Headphones) - Blocks whispers, poison stops
                             addCatchEffect(burakX, burakTop - 30, '🎧 Fısıltılar Kesildi!', true);
                             
-                            // Sound wave effect
-                            for (let i = 0; i < 20; i++) {
-                                const angle = (Math.PI * 2 / 20) * i;
+                            // Sound wave effect (optimized)
+                            for (let i = 0; i < 10; i++) { // Reduced from 20 to 10
+                                const angle = (Math.PI * 2 / 10) * i;
                                 catchEffects.push({
                                     x: burakX,
                                     y: burakTop,
@@ -5003,9 +5300,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (cleared > 0) {
                                 addCatchEffect(burakX, burakTop - 30, `💥 ${cleared} Temizlendi!`, true);
                             }
-                            // Explosion effect
-                            for (let i = 0; i < 15; i++) {
-                                const angle = (Math.PI * 2 / 15) * i;
+                            // Explosion effect (optimized)
+                            for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
+                                const angle = (Math.PI * 2 / 8) * i;
                                 catchEffects.push({
                                     x: burakX,
                                     y: burakTop,
@@ -5022,8 +5319,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             gameLives = Math.min(5, gameLives + 1);
                             updateLivesDisplay();
                             addCatchEffect(burakX, burakTop - 30, '❤️ +1 Can!', true);
-                            // Light burst
-                            for (let i = 0; i < 12; i++) {
+                            // Light burst (optimized)
+                            for (let i = 0; i < 6; i++) { // Reduced from 12 to 6
                                 catchEffects.push({
                                     x: burakX,
                                     y: burakTop,
@@ -5041,8 +5338,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             magnetActive = true;
                             magnetTimer = 5;
                             addCatchEffect(burakX, burakTop - 30, '🧲 Mıknatıs!', true);
-                            // Dark particles
-                            for (let i = 0; i < 10; i++) {
+                            // Dark particles (optimized)
+                            for (let i = 0; i < 5; i++) { // Reduced from 10 to 5
                                 catchEffects.push({
                                     x: burakX + (Math.random() - 0.5) * 100,
                                     y: burakTop + (Math.random() - 0.5) * 100,
@@ -5061,8 +5358,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             streakProtectActive = true;
                             streakProtectTimer = 8;
                             addCatchEffect(burakX, burakTop - 30, '💫🔥 SÜPER GÜÇ!', true);
-                            // Fire explosion
-                            for (let i = 0; i < 20; i++) {
+                            // Fire explosion (optimized)
+                            for (let i = 0; i < 10; i++) { // Reduced from 20 to 10
                                 const angle = Math.random() * Math.PI * 2;
                                 catchEffects.push({
                                     x: burakX,
@@ -5082,8 +5379,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             magnetActive = true;
                             magnetTimer = 4;
                             addCatchEffect(burakX, burakTop - 30, '🌟 Yeniden Doğuş!', true);
-                            // Butterfly particles
-                            for (let i = 0; i < 15; i++) {
+                            // Butterfly particles (optimized)
+                            for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
                                 catchEffects.push({
                                     x: burakX + (Math.random() - 0.5) * 80,
                                     y: burakTop + (Math.random() - 0.5) * 80,
@@ -5202,15 +5499,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }, 150);
 
-                        // Sparkle burst around Burak 
+                        // Sparkle burst around Burak (optimized for performance)
                         if (!h.type.isBroken) {
-                            for (let s = 0; s < 5; s++) {
+                            for (let s = 0; s < 2; s++) { // Reduced from 5 to 2
                                 catchEffects.push({
                                     x: burakX + (Math.random() - 0.5) * 60,
                                     y: burakTop + (Math.random() - 0.5) * 40,
                                     vx: (Math.random() - 0.5) * 3,
                                     vy: -Math.random() * 2 - 1,
-                                    life: 0.8,
+                                    life: 0.6, // Reduced from 0.8
                                     color: ['#ffeb3b', '#ff9800', '#fff', '#ff6b88'][Math.floor(Math.random() * 4)],
                                     size: Math.random() * 3 + 1,
                                     sparkle: true
@@ -5219,8 +5516,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                     if (bernaEl) {
-                        bernaEl.style.transform = `translate3d(${bernaX - 50}px, 0, 0) scale(1.1)`;
-                        setTimeout(() => { bernaEl.style.transform = ''; }, 200);
+                        // Just scale Berna, don't change position (position is handled by main animation loop)
+                        const currentTransform = bernaEl.style.transform;
+                        const scaleMatch = currentTransform.match(/scale\([^)]+\)/);
+                        const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
+                        
+                        bernaEl.style.transform = `${baseTransform} scale(1.1)`;
+                        setTimeout(() => { 
+                            if (bernaEl) bernaEl.style.transform = `${baseTransform} scale(1.0)`;
+                        }, 200);
                     }
 
                     checkWaveProgress();
@@ -5434,32 +5738,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (burakEl) burakEl.style.opacity = 1.0;
         }
 
-        // Shield effect (Canvas)
+        // Shield effect (Canvas) - Positioned around Burak character
         if (shieldActive) {
             gameCtx.strokeStyle = `rgba(100, 200, 255, ${0.4 + Math.sin(gameTime * 6) * 0.2})`;
             gameCtx.lineWidth = 3;
             gameCtx.beginPath();
-            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 10, 0, Math.PI * 2);
+            // Slightly above burakTop for better visual alignment
+            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 10, 0, Math.PI * 2);
             gameCtx.stroke();
         }
 
-        // Magnet aura (Canvas)
+        // Magnet aura (Canvas) - Positioned around Burak character
         if (magnetActive) {
             gameCtx.strokeStyle = `rgba(255, 180, 50, ${0.3 + Math.sin(gameTime * 8) * 0.2})`;
             gameCtx.lineWidth = 2;
             gameCtx.setLineDash([5, 5]);
             gameCtx.beginPath();
-            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 20, 0, Math.PI * 2);
+            // Slightly above burakTop for better visual alignment
+            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 20, 0, Math.PI * 2);
             gameCtx.stroke();
             gameCtx.setLineDash([]);
         }
 
-        // Double Points aura (Canvas)
+        // Double Points aura (Canvas) - Positioned around Burak character
         if (doublePointsActive) {
             gameCtx.strokeStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(gameTime * 10) * 0.3})`;
             gameCtx.lineWidth = 4;
             gameCtx.beginPath();
-            gameCtx.arc(burakX, burakTop, BURAK_SPRITE_SIZE / 2 + 15, 0, Math.PI * 2);
+            // Slightly above burakTop for better visual alignment
+            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 15, 0, Math.PI * 2);
             gameCtx.stroke();
             
             // Sparkles around character
@@ -5468,7 +5775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dist = BURAK_SPRITE_SIZE / 2 + 15;
                 catchEffects.push({
                     x: burakX + Math.cos(angle) * dist,
-                    y: burakTop + Math.sin(angle) * dist,
+                    y: (burakTop - 20) + Math.sin(angle) * dist,
                     vx: Math.cos(angle) * 2,
                     vy: Math.sin(angle) * 2,
                     life: 0.5,
@@ -5585,9 +5892,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Draw fog effect (needs player position)
             bossController.drawFogEffect(gameCtx, gameW, gameH, burakX, burakTop);
             
-            // Draw ego wall (needs boss position)
+            // Draw ego wall (needs boss position and HP)
             const bossConfig = WAVES[currentWave - 1]?.boss || {};
-            bossController.drawEgoWall(gameCtx, gameW, gameH, bossX, bossY);
+            bossController.drawEgoWall(gameCtx, gameW, gameH, bossX, bossY, bossHP, bossMaxHP);
             
             // Draw Final Boss platforms (Phase 3)
             if (bossPhase === 3 && bossConfig.ability === 'dark_reflection') {
@@ -5741,19 +6048,50 @@ document.addEventListener('DOMContentLoaded', () => {
         gameCtx.fillStyle = 'rgba(255, 77, 109, 0.15)';
         gameCtx.fillRect(0, gameH - 5, gameW, 5);
 
-        // Active power-up indicators
+        // Active power-up indicators - Bottom right corner with individual boxes
         if (shieldActive || magnetActive || slowMoActive || loveBlastActive) {
-            let indicators = [];
-            if (shieldActive) indicators.push('🛡️ ' + Math.ceil(shieldTimer) + 's');
-            if (magnetActive) indicators.push('🧲 ' + Math.ceil(magnetTimer) + 's');
-            if (slowMoActive) indicators.push('⏳ ' + Math.ceil(slowMoTimer) + 's');
-            if (loveBlastActive) indicators.push('🌈 ' + Math.ceil(loveBlastTimer) + 's');
-            gameCtx.font = '14px Montserrat, sans-serif';
-            gameCtx.fillStyle = '#ffe5ec';
-            gameCtx.textAlign = 'center';
-            gameCtx.globalAlpha = 0.8;
-            gameCtx.fillText(indicators.join('  '), gameW / 2, gameH - 12);
-            gameCtx.globalAlpha = 1;
+            const powerUps = [];
+            if (shieldActive) powerUps.push({ emoji: '🛡️', time: Math.ceil(shieldTimer), color: '#4a90e2' });
+            if (magnetActive) powerUps.push({ emoji: '🧲', time: Math.ceil(magnetTimer), color: '#e24a90' });
+            if (slowMoActive) powerUps.push({ emoji: '⏳', time: Math.ceil(slowMoTimer), color: '#9b59b6' });
+            if (loveBlastActive) powerUps.push({ emoji: '🌈', time: Math.ceil(loveBlastTimer), color: '#f39c12' });
+            
+            const boxSize = 50;
+            const spacing = 8;
+            const startX = gameW - (boxSize + 10);
+            const startY = gameH - (powerUps.length * (boxSize + spacing) + 10);
+            
+            powerUps.forEach((powerUp, index) => {
+                const x = startX;
+                const y = startY + index * (boxSize + spacing);
+                
+                // Background box with gradient
+                const gradient = gameCtx.createLinearGradient(x, y, x, y + boxSize);
+                gradient.addColorStop(0, powerUp.color + 'dd');
+                gradient.addColorStop(1, powerUp.color + '88');
+                gameCtx.fillStyle = gradient;
+                gameCtx.fillRect(x, y, boxSize, boxSize);
+                
+                // Border with glow
+                gameCtx.strokeStyle = powerUp.color;
+                gameCtx.lineWidth = 2;
+                gameCtx.shadowColor = powerUp.color;
+                gameCtx.shadowBlur = 10;
+                gameCtx.strokeRect(x, y, boxSize, boxSize);
+                gameCtx.shadowBlur = 0;
+                
+                // Emoji
+                gameCtx.font = '24px Arial';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#fff';
+                gameCtx.fillText(powerUp.emoji, x + boxSize / 2, y + boxSize / 2 - 6);
+                
+                // Timer
+                gameCtx.font = 'bold 12px Montserrat, sans-serif';
+                gameCtx.fillStyle = '#fff';
+                gameCtx.fillText(powerUp.time + 's', x + boxSize / 2, y + boxSize - 10);
+            });
         }
 
 
@@ -5797,6 +6135,12 @@ document.addEventListener('DOMContentLoaded', () => {
             targetX = centerX - offset; // Invert around center
         }
         
+        // Boss 9: Input Lag - Queue input if glitch is active
+        if (bossController && bossController.inputLag > 0) {
+            bossController.queueInput({ targetX: targetX }, Date.now());
+            return; // Don't process immediately
+        }
+        
         // Apply slow debuff from boss
         const slowMultiplier = bossController ? bossController.getSlowMultiplier() : 1.0;
         
@@ -5811,13 +6155,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Track kinetic charge for Boss 4
         if (bossActive && bossController) {
             const playerVelocityX = burakX - oldBurakX;
-            const kineticCharge = bossController.updateKineticCharge(playerVelocityX, dt);
+            // Use a fixed dt estimate for pointer move (16ms = 60fps)
+            const estimatedDt = 0.016;
+            const kineticCharge = bossController.updateKineticCharge(playerVelocityX, estimatedDt);
             
             // Auto-damage boss when fully charged
             if (bossController.isKineticCharged()) {
                 damageBoss(1, 'kinetic');
                 bossController.kineticCharge = 0; // Reset charge
-                addCatchEffect(burakX, burakTop - 30, '⚡ KİNETİK ŞARJ!', true);
+                // Calculate burakTop for effect position
+                const effectY = gameH - BURAK_SPRITE_SIZE / 2 - 30;
+                addCatchEffect(burakX, effectY, '⚡ KİNETİK ŞARJ!', true);
             }
         }
     }
@@ -5845,6 +6193,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
             }
         });
+    }
+    
+    // Add touch control to entire game overlay for touch area mode
+    if (gameOverlay) {
+        gameOverlay.addEventListener('touchmove', (e) => {
+            if (!gameActive || gamePaused || !settings.touchArea) return;
+            handleGamePointerMove(e);
+        }, { passive: false });
+        
+        gameOverlay.addEventListener('touchstart', (e) => {
+            if (!gameActive || gamePaused || !settings.touchArea) return;
+            
+            // Don't interfere with buttons or modals
+            if (e.target.closest('button') || e.target.closest('.modal-overlay')) return;
+            
+            e.preventDefault();
+            
+            // Jump control for Final Boss Phase 3
+            if (bossActive && bossPhase === 3 && window.finalBossJumpEnabled) {
+                window.tapJump = true;
+            }
+            
+            handleGamePointerMove(e);
+        }, { passive: false });
     }
 
     // ----------------------------
@@ -5877,12 +6249,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Stop main menu music (dilerimki.mp3) and start game music
-        if (bgMusic) {
+        // Stop main menu music immediately when starting game
+        console.log('startGame - stopping bgMusic, paused:', bgMusic?.paused);
+        if (bgMusic && !bgMusic.paused) {
+            console.log('startGame - pausing bgMusic');
             bgMusic.pause();
-            bgMusic.currentTime = 0; // Reset to beginning
+            bgMusic.currentTime = 0;
         }
-        startGameMusic();
+        isMusicPlaying = false;
+        if (musicControl) musicControl.classList.remove('playing');
         
         // Show loading screen only on mobile and only when starting game
         if (isMobile) {
@@ -5901,8 +6276,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameCanvas) gameCanvas.style.display = 'block';
         if (gameHud) gameHud.style.display = 'flex';
         if (gameChars) gameChars.style.display = 'block';
-        if (gameCloseBtn) gameCloseBtn.style.display = 'block';
-        if (gamePauseBtn) gamePauseBtn.style.display = 'block';
+        if (gameCloseBtn) gameCloseBtn.style.display = 'flex';
+        if (gamePauseBtn) gamePauseBtn.style.display = 'flex';
+        
+        // Apply touch area mode if enabled
+        if (settings.touchArea && gameOverlay) {
+            gameOverlay.classList.add('touch-area-mode');
+        }
         
         gameSessionId++;
         const currentSession = gameSessionId;
@@ -5924,6 +6304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScore = 0;
         waveScoreEarned = 0;
         gameLives = 5;
+        maxLives = 5; // Reset max lives to default
         gameCombo = 1;
         gameConsecutiveCatches = 0;
         currentWave = 1;
@@ -5979,6 +6360,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameOverScreen) gameOverScreen.classList.remove('active');
 
         if (gameOverlay) gameOverlay.classList.add('active');
+        
+        // Stop main menu music and start game music when overlay is shown
+        console.log('Game overlay active - stopping bgMusic, paused:', bgMusic?.paused);
+        if (bgMusic && !bgMusic.paused) {
+            console.log('Pausing bgMusic');
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+        }
+        isMusicPlaying = false;
+        if (musicControl) musicControl.classList.remove('playing');
+        
+        // Start game music if settings allow
+        console.log('Starting game music, settings.music:', settings.music);
+        startGameMusic();
+        if (gameMusicPlaying && musicControl) {
+            console.log('Game music playing, updating icon');
+            musicControl.classList.add('playing');
+        }
 
         // Initialize dimensions after overlay is active to get real measurements
         resizeGameCanvas();
@@ -6087,17 +6486,268 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameOverScreen) gameOverScreen.classList.add('active');
     }
 
+    // Victory Screen Functions (Global scope for dev commands)
+    function showVictoryScreen() {
+        console.log("showVictoryScreen called - GAME COMPLETED!");
+        
+        // Show cinema overlay with countdown first
+        showCinemaVideo();
+    }
+    
+    function showCinemaVideo() {
+        const cinemaOverlay = document.getElementById('cinema-overlay');
+        const filmCountdown = document.getElementById('film-countdown');
+        const countdownNumber = document.getElementById('countdown-number');
+        const endingVideo = document.getElementById('ending-video');
+        
+        if (!cinemaOverlay || !endingVideo) {
+            console.error('Cinema elements not found');
+            showVictoryScreenAfterVideo(); // Fallback
+            return;
+        }
+        
+        console.log('Cinema video starting...');
+        
+        // Stop game
+        gameActive = false;
+        cancelAnimationFrame(gameAnimFrame);
+        stopGameMusic();
+        
+        // Reset video and countdown state
+        endingVideo.classList.remove('active');
+        endingVideo.style.display = 'none';
+        filmCountdown.classList.remove('hidden');
+        filmCountdown.style.display = 'flex';
+        
+        // Show cinema overlay
+        cinemaOverlay.classList.remove('hidden');
+        setTimeout(() => {
+            cinemaOverlay.classList.add('active');
+        }, 50);
+        
+        // Countdown: 3, 2, 1
+        let count = 3;
+        countdownNumber.textContent = count;
+        countdownNumber.style.display = 'block';
+        countdownNumber.style.visibility = 'visible';
+        console.log('Countdown starting:', count);
+        console.log('countdownNumber element:', countdownNumber);
+        console.log('countdownNumber text:', countdownNumber.textContent);
+        console.log('countdownNumber styles:', window.getComputedStyle(countdownNumber).fontSize, window.getComputedStyle(countdownNumber).color);
+        
+        const countdownInterval = setInterval(() => {
+            count--;
+            console.log('Countdown:', count);
+            if (count > 0) {
+                countdownNumber.textContent = count;
+                console.log('Updated countdown text to:', countdownNumber.textContent);
+                // Beep sound
+                playSound('freeze');
+            } else {
+                clearInterval(countdownInterval);
+                console.log('Countdown finished, showing video');
+                // Hide countdown, show video
+                filmCountdown.style.display = 'none';
+                
+                setTimeout(() => {
+                    endingVideo.style.display = 'block';
+                    endingVideo.classList.add('active');
+                    endingVideo.play().catch(e => {
+                        console.error('Video play error:', e);
+                        showVictoryScreenAfterVideo();
+                    });
+                }, 300);
+            }
+        }, 1000);
+        
+        // Video ended handler
+        endingVideo.onended = () => {
+            console.log('Video ended, showing ending messages');
+            showEndingMessages();
+        };
+    }
+    
+    function showEndingMessages() {
+        const cinemaOverlay = document.getElementById('cinema-overlay');
+        const endingMessage = document.getElementById('ending-message');
+        const endingVideo = document.getElementById('ending-video');
+        
+        if (!endingMessage) {
+            console.error('Ending message element not found');
+            showVictoryScreenAfterVideo();
+            return;
+        }
+        
+        // Hide video, keep black background
+        endingVideo.style.display = 'none';
+        
+        // Message sequence
+        const messages = [
+            { text: '💖 Seni Çok Seviyorum 💖', duration: 3000 },
+            { text: '✨ İyi Ki Varsın ✨', duration: 3000 }
+        ];
+        
+        let currentIndex = 0;
+        
+        function showNextMessage() {
+            if (currentIndex >= messages.length) {
+                // All messages shown, show victory screen while cinema is still visible
+                endingMessage.classList.remove('active');
+                
+                // Wait for message fade out, then show victory screen
+                setTimeout(() => {
+                    // Show victory screen first
+                    showVictoryScreenAfterVideo();
+                    
+                    // Then fade out cinema overlay
+                    setTimeout(() => {
+                        cinemaOverlay.classList.remove('active');
+                        setTimeout(() => {
+                            cinemaOverlay.classList.add('hidden');
+                        }, 1500);
+                    }, 100);
+                }, 1500);
+                return;
+            }
+            
+            const message = messages[currentIndex];
+            
+            // Create sparkle container
+            const sparkleContainer = document.createElement('div');
+            sparkleContainer.className = 'sparkle-container';
+            
+            // Create sparkles
+            for (let i = 0; i < 20; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.animationDelay = Math.random() * 3 + 's';
+                sparkle.style.animationDuration = (2 + Math.random() * 2) + 's';
+                sparkleContainer.appendChild(sparkle);
+            }
+            
+            // Create message text element with sparkles
+            endingMessage.innerHTML = `
+                <div class="ending-message-text">${message.text}</div>
+            `;
+            endingMessage.appendChild(sparkleContainer);
+            
+            // Fade in
+            setTimeout(() => {
+                endingMessage.classList.add('active');
+            }, 100);
+            
+            // Fade out after duration
+            setTimeout(() => {
+                endingMessage.classList.remove('active');
+                
+                // Show next message after fade out
+                setTimeout(() => {
+                    currentIndex++;
+                    showNextMessage();
+                }, 1500); // Wait for fade out
+            }, message.duration);
+        }
+        
+        // Start showing messages after a brief delay
+        setTimeout(() => {
+            showNextMessage();
+        }, 500);
+    }
+    
+    function showVictoryScreenAfterVideo() {
+        console.log("Showing victory screen after video");
+        
+        // Ensure game is stopped
+        gameActive = false;
+        cancelAnimationFrame(gameAnimFrame);
+        
+        // Achievement tracking - Game completed!
+        if (achievementSystem) {
+            achievementSystem.updateStat('highScore', gameScore);
+            achievementSystem.updateStat('highestWave', currentWave);
+            achievementSystem.updateStat('gameCompleted', true);
+        }
+        
+        // Play victory music
+        if (bgMusic && settings.music) {
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(e => console.log("Audio prevented"));
+            isMusicPlaying = true;
+        }
+
+        // High Score Logic
+        const currentHigh = parseInt(localStorage.getItem('bernaGameHighScore') || '0');
+        if (gameScore > currentHigh) {
+            localStorage.setItem('bernaGameHighScore', gameScore);
+            if (gameHighscoreText) gameHighscoreText.textContent = "🏆 YENİ REKOR!";
+            playSound('levelup');
+        } else {
+            if (gameHighscoreText) gameHighscoreText.textContent = `En Yüksek: ${currentHigh}`;
+        }
+
+        // Stats Display
+        if (statHeartsEl) statHeartsEl.textContent = totalHeartsCaught;
+        if (statComboEl) statComboEl.textContent = longestCombo;
+        if (statTimeEl) statTimeEl.textContent = Math.floor(gameTime) + 's';
+        if (statBossesEl) statBossesEl.textContent = bossesDefeated;
+
+        // Animated Score Counter
+        if (finalScoreEl) {
+            finalScoreEl.textContent = '0';
+            const targetScore = gameScore;
+            const duration = 1500;
+            const startTime = performance.now();
+
+            function animateScore(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(targetScore * eased);
+                finalScoreEl.textContent = current;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateScore);
+                } else {
+                    finalScoreEl.textContent = targetScore;
+                }
+            }
+            requestAnimationFrame(animateScore);
+        }
+
+        if (finalWaveEl) finalWaveEl.textContent = currentWave;
+        
+        // VICTORY MESSAGE!
+        if (gameOverTitle) gameOverTitle.textContent = '🎉 OYUNU BİTİRDİNİZ! 🎉';
+        if (gameOverMsgEl) gameOverMsgEl.textContent = '💖 Berna & Burak - Sonsuz Aşk! ♾️';
+
+        // Show game over screen with victory styling
+        if (gameOverScreen) {
+            gameOverScreen.classList.add('active');
+            gameOverScreen.classList.add('victory-mode');
+            gameOverScreen.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)';
+        }
+        
+        // Keep game overlay active but hidden behind victory screen
+        // Don't remove active class to prevent game from showing
+        
+        playSound('bossdefeat'); // Victory fanfare
+    }
+
     function closeGame() {
         gameActive = false;
         cancelAnimationFrame(gameAnimFrame);
         if (gameOverScreen) gameOverScreen.classList.remove('active');
         if (gamePausedScreen) gamePausedScreen.classList.remove('active');
         
+        // Remove active class from overlay to hide HUD, buttons automatically
+        if (gameOverlay) gameOverlay.classList.remove('active');
+        
         // Keep game overlay open but show main menu
         // (Main menu is inside game overlay)
         if (mainMenu) mainMenu.classList.remove('hidden');
         
-        // Hide game canvas and HUD
+        // Hide game canvas, HUD, characters, and buttons
         const gameCanvas = document.getElementById('game-canvas');
         const gameHud = document.querySelector('.game-hud');
         const gameChars = document.getElementById('game-characters');
@@ -6113,10 +6763,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Stop game music and resume main menu music (dilerimki.mp3)
         // Only resume if we haven't played the easter egg yet
         stopGameMusic();
+        if (musicControl) musicControl.classList.remove('playing');
+        
         if (bgMusic && settings.music && state !== 'MAIN') {
             bgMusic.currentTime = 0; // Start from beginning
             bgMusic.play().catch(e => console.log("Audio prevented"));
             isMusicPlaying = true;
+            if (musicControl) musicControl.classList.add('playing');
         }
     }
 
@@ -6247,6 +6900,296 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ============================================
+    // DEVELOPER COMMANDS
+    // ============================================
+    // Developer state
+    let devGodMode = false;
+    let devSpeedMultiplier = 1.0;
+
+    window.dev = {
+        // Debug - oyun durumunu kontrol et
+        debug: function() {
+            console.log('🔍 Debug Bilgisi:');
+            console.log('  gameActive:', gameActive);
+            console.log('  gamePaused:', gamePaused);
+            console.log('  gameSessionId:', gameSessionId);
+            console.log('  window.dev tanımlı:', typeof window.dev !== 'undefined');
+            console.log('');
+            console.log('⚡ Performans:');
+            console.log('  Kalpler:', fallingHearts.length, '/', MAX_HEARTS);
+            console.log('  Efektler:', catchEffects.length, '/', MAX_CATCH_EFFECTS);
+            console.log('  Power-ups:', gamePowerUps.length, '/', MAX_POWER_UPS);
+        },
+
+        // Ölümsüzlük modu
+        godMode: function(enable = true) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış! Önce oyunu başlat.');
+                console.log('🔍 gameActive değeri:', gameActive);
+                return;
+            }
+            devGodMode = enable;
+            console.log(enable ? '✅ Ölümsüzlük modu AÇIK' : '❌ Ölümsüzlük modu KAPALI');
+        },
+        
+        // Alias - küçük harfle de çalışsın
+        godmode: function(enable = true) {
+            this.godMode(enable);
+        },
+
+        // Oyunu devam ettir (pause'dan çık)
+        resume: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (!gamePaused) {
+                console.log('⚠️ Oyun zaten devam ediyor!');
+                return;
+            }
+            gamePaused = false;
+            if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+            gameLoop(gameSessionId);
+            console.log('✅ Oyun devam ettiriliyor...');
+        },
+
+        // Bir sonraki seviyeye geç
+        nextLevel: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (bossActive) {
+                console.log('⚠️ Boss savaşı sırasında seviye atlanamaz!');
+                return;
+            }
+            currentWave++;
+            waveScoreEarned = 0;
+            checkWaveProgress();
+            console.log(`✅ Seviye ${currentWave}'e geçildi`);
+        },
+
+        // İstediğin seviyeye git
+        goToLevel: function(level) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (level < 1 || level > 13) {
+                console.log('⚠️ Seviye 1-13 arasında olmalı!');
+                return;
+            }
+            currentWave = level;
+            waveScoreEarned = 0;
+            bossActive = false;
+            bossController?.reset();
+            checkWaveProgress();
+            console.log(`✅ Seviye ${level}'e gidildi`);
+        },
+
+        // Boss seviyesine git
+        goToBoss: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (bossActive) {
+                console.log('⚠️ Boss zaten aktif!');
+                return;
+            }
+            // Set warning shown to prevent double spawn
+            bossWarningShown = true;
+            // Directly spawn boss
+            spawnBoss();
+            console.log('✅ Boss savaşı başlatıldı!');
+        },
+
+        // Berna'ya özel yetenek kullandır
+        useSpecial: function(specialName) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            
+            // Convert to string if not already
+            specialName = String(specialName);
+            
+            const specials = {
+                'shield': 'shield',
+                'kalkan': 'shield',
+                'slow': 'slow',
+                'yavas': 'slow',
+                'yavaş': 'slow',
+                'yavaslat': 'slow',
+                'yavaşlat': 'slow',
+                'magnet': 'magnet',
+                'miknatıs': 'magnet',
+                'mıknatıs': 'magnet',
+                'miknatis': 'magnet',
+                'miknatis': 'magnet'
+            };
+
+            const special = specials[specialName.toLowerCase()];
+            if (!special) {
+                console.log('⚠️ Geçersiz özel yetenek!');
+                console.log('📝 Kullanılabilir:');
+                console.log('  - shield, kalkan');
+                console.log('  - slow, yavas, yavaslat');
+                console.log('  - magnet, miknatis, mıknatıs');
+                console.log('');
+                console.log('💡 Kullanım: dev.useSpecial("shield")');
+                console.log('⚠️ TІРNAK KULLANMALISIN! Yoksa hata alırsın.');
+                return;
+            }
+
+            activatePowerUp(special);
+            console.log(`✅ ${special.toUpperCase()} yeteneği aktif edildi!`);
+        },
+
+        // Can ekle
+        addLives: function(amount = 1) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            gameLives = Math.min(gameLives + amount, maxLives);
+            updateLivesDisplay();
+            console.log(`✅ ${amount} can eklendi. Toplam: ${gameLives}`);
+        },
+
+        // Skor ekle
+        addScore: function(amount = 100) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            gameScore += amount;
+            updateCounter();
+            console.log(`✅ ${amount} puan eklendi. Toplam: ${gameScore}`);
+        },
+
+        // Boss'a hasar ver
+        damageBossBy: function(amount = 10) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (!bossActive) {
+                console.log('⚠️ Boss aktif değil!');
+                return;
+            }
+            damageBoss(amount, 'dev');
+            console.log(`✅ Boss'a ${amount} hasar verildi`);
+        },
+
+        // Boss'u yok et
+        killBoss: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (!bossActive) {
+                console.log('⚠️ Boss aktif değil!');
+                return;
+            }
+            defeatBoss();
+            console.log('✅ Boss yok edildi!');
+        },
+
+        // Oyunu direkt bitir (video sahnesini göster)
+        completeGame: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            console.log('🎬 Oyun tamamlanıyor... Video sahnesi başlatılıyor!');
+            // Set to final wave
+            currentWave = 20;
+            bossesDefeated = 20;
+            // Show victory screen with cinema video
+            showVictoryScreen();
+        },
+
+        // Tüm kalpleri temizle
+        clearHearts: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            fallingHearts = [];
+            console.log('✅ Tüm kalpler temizlendi');
+        },
+
+        // Oyun hızını değiştir
+        setSpeed: function(multiplier = 1.0) {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            if (multiplier < 0.1 || multiplier > 5) {
+                console.log('⚠️ Hız çarpanı 0.1-5 arasında olmalı!');
+                return;
+            }
+            devSpeedMultiplier = multiplier;
+            console.log(`✅ Oyun hızı ${multiplier}x olarak ayarlandı`);
+        },
+
+        // Oyun durumunu göster
+        status: function() {
+            if (!gameActive) {
+                console.log('⚠️ Oyun başlatılmamış!');
+                return;
+            }
+            console.log('📊 Oyun Durumu:');
+            console.log(`  Seviye: ${currentWave}`);
+            console.log(`  Skor: ${gameScore}`);
+            console.log(`  Can: ${gameLives}`);
+            console.log(`  Combo: ${gameCombo}x`);
+            console.log(`  Duraklatıldı: ${gamePaused ? 'Evet' : 'Hayır'}`);
+            console.log(`  Boss Aktif: ${bossActive ? 'Evet' : 'Hayır'}`);
+            if (bossActive) {
+                console.log(`  Boss Canı: ${bossHP}/${bossMaxHP}`);
+            }
+            console.log(`  Ölümsüzlük: ${devGodMode ? 'AÇIK' : 'Kapalı'}`);
+            console.log(`  Hız Çarpanı: ${devSpeedMultiplier}x`);
+        },
+
+        // Yardım menüsü
+        help: function() {
+            console.log('🎮 DEVELOPER KOMUTLARI:');
+            console.log('');
+            console.log('dev.debug()                      - Debug bilgisi göster');
+            console.log('dev.godMode(true/false)          - Ölümsüzlük modu');
+            console.log('dev.godmode(true/false)          - Ölümsüzlük modu (alias)');
+            console.log('dev.resume()                     - Oyunu devam ettir');
+            console.log('dev.nextLevel()                  - Bir sonraki seviyeye geç');
+            console.log('dev.goToLevel(1-13)              - İstediğin seviyeye git');
+            console.log('dev.goToBoss()                   - Boss\'u direkt spawn et');
+            console.log('dev.useSpecial("shield")         - Özel yetenek (TIRNAKLARİ UNUTMA!)');
+            console.log('  Yetenekler: "shield", "slow", "magnet"');
+            console.log('  Türkçe: "kalkan", "yavas", "miknatis"');
+            console.log('dev.addLives(miktar)             - Can ekle');
+            console.log('dev.addScore(miktar)             - Skor ekle');
+            console.log('dev.damageBossBy(miktar)         - Boss\'a hasar ver');
+            console.log('dev.killBoss()                   - Boss\'u yok et');
+            console.log('dev.completeGame()               - Oyunu bitir (video sahnesini göster)');
+            console.log('dev.clearHearts()                - Tüm kalpleri temizle');
+            console.log('dev.setSpeed(çarpan)             - Oyun hızını değiştir (0.1-5)');
+            console.log('dev.status()                     - Oyun durumunu göster');
+            console.log('dev.help()                       - Bu yardım menüsünü göster');
+            console.log('');
+            console.log('⚠️ ÖNEMLİ: String parametrelerde tırnak kullan!');
+            console.log('   ✅ Doğru: dev.useSpecial("shield")');
+            console.log('   ❌ Yanlış: dev.useSpecial(shield)');
+            console.log('');
+            console.log('💡 İpucu: Oyun duraklatıldıysa dev.resume() ile devam ettir!');
+        }
+    };
+
+    // Oyun başladığında bilgilendirme
+    console.log('🎮 Developer modu aktif! Komutlar için: dev.help()');
+
     window.addEventListener('resize', () => {
         if (gameOverlay && gameOverlay.classList.contains('active')) {
             resizeGameCanvas();
@@ -6311,3 +7254,5 @@ window.addEventListener('appinstalled', () => {
         installButton.style.display = 'none';
     }
 });
+
+
