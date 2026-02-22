@@ -1561,7 +1561,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NEW: DOM refs ---
     const gamePauseBtn = document.getElementById('game-pause');
     const gamePausedScreen = document.getElementById('game-paused-screen');
-    const gameTutorial = document.getElementById('game-tutorial');
     const gameHighscoreText = document.getElementById('game-highscore-text');
     const statHeartsEl = document.getElementById('stat-hearts');
     const statComboEl = document.getElementById('stat-combo');
@@ -6288,18 +6287,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentSession = gameSessionId;
         console.log("Starting game session:", currentSession);
 
-        // Tutorial check
-        if (!localStorage.getItem('bernaGameTutorialSeen')) {
-            if (gameTutorial) {
-                gameTutorial.classList.add('active');
-                setTimeout(() => {
-                    gameTutorial.addEventListener('click', () => {
-                        gameTutorial.classList.remove('active');
-                        localStorage.setItem('bernaGameTutorialSeen', 'true');
-                    }, { once: true });
-                }, 100);
-            }
-        }
         gameActive = true;
         gameScore = 0;
         waveScoreEarned = 0;
