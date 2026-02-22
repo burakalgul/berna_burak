@@ -75,7 +75,7 @@ class BossController {
         // Spawn lava bombs randomly across the screen (VERY RARE - mobile friendly)
         if (Math.random() < 0.004) { // Reduced from 0.008 to 0.004 (half again - 4x less than original)
             const targetX = Math.random() * gameW; // Use parameter instead of this.ctx.gameW
-            const targetY = gameH - 80; // Land near the ground
+            const targetY = gameH - 40; // Land closer to ground (was 80, now 40 for better collision)
             this.spawnLavaBomb(targetX, bossY + 40, targetY);
         }
 
@@ -106,7 +106,8 @@ class BossController {
             
             const dx = x - bomb.x;
             const dy = y - bomb.y;
-            return Math.sqrt(dx * dx + dy * dy) < bomb.radius;
+            // Increased collision radius slightly for better detection (radius + 10)
+            return Math.sqrt(dx * dx + dy * dy) < (bomb.radius + 10);
         });
     }
 
@@ -410,7 +411,7 @@ class BossController {
         if (Math.random() < 0.0025) { // 1/6 of original rate
             // Spawn near player or random location
             const spawnX = Math.random() < 0.5 ? playerX + (Math.random() - 0.5) * 200 : Math.random() * 600;
-            this.spawnPoisonZone(spawnX, gameH - 60);
+            this.spawnPoisonZone(spawnX, gameH - 40); // Changed from 60 to 40 for better collision
         }
 
         // Update existing zones
@@ -428,7 +429,8 @@ class BossController {
         return this.poisonZones.some(zone => {
             const dx = x - zone.x;
             const dy = y - zone.y;
-            return Math.sqrt(dx * dx + dy * dy) < zone.radius;
+            // Increased collision radius slightly for better detection (radius + 10)
+            return Math.sqrt(dx * dx + dy * dy) < (zone.radius + 10);
         });
     }
 

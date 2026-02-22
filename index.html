@@ -261,8 +261,8 @@
                 </div>
             </div>
         </div>
-        <button id="game-close" class="game-close-btn">✕</button>
-        <button id="game-pause" class="game-pause-btn">⏸️</button>
+        <!-- Buttons moved to HUD --></button>
+        <!-- Buttons moved to HUD --></button>
         
         <div class="game-hud">
             <div class="game-hud-item">
@@ -278,9 +278,9 @@
                 <span class="hud-value" id="game-wave">1</span>
                 <span class="hud-sub-value" id="game-wave-name">Tanışma</span>
             </div>
-            <div class="game-hud-item">
-                <span class="hud-label">KOMBO</span>
-                <span class="hud-value" id="game-combo">x1</span>
+            <div class="game-hud-item game-hud-buttons">
+                <button id="game-pause" class="hud-btn hud-pause-btn">⏸️</button>
+                <button id="game-close" class="hud-btn hud-close-btn">✕</button>
             </div>
         </div>
         <div class="game-wave-banner" id="game-wave-banner"></div>
@@ -294,12 +294,69 @@
         <canvas id="game-canvas"></canvas>
         <div id="game-paused-screen" class="game-paused-screen">
             <h2 class="paused-title">DURAKLATILDI</h2>
-            <p class="paused-sub">Ne yapmak istersin?</p>
+            <p class="paused-sub" id="paused-sub-text">Ne yapmak istersin?</p>
             <div class="paused-buttons">
                 <button id="pause-resume" class="game-btn game-btn-primary">▶️ Devam Et</button>
                 <button id="pause-stats" class="game-btn game-btn-secondary">📊 İstatistikler</button>
                 <button id="pause-settings" class="game-btn game-btn-secondary">⚙️ Ayarlar</button>
+                <button id="dev-menu-btn" class="game-btn game-btn-dev hidden">🔧 Developer</button>
                 <button id="pause-quit" class="game-btn game-btn-secondary">❌ Çık</button>
+            </div>
+            
+            <!-- Hidden Developer Menu -->
+            <div id="dev-menu" class="dev-menu hidden">
+                <button class="dev-menu-close" id="dev-menu-close">✕</button>
+                <div class="dev-menu-header">
+                    <span class="dev-icon">🔧</span>
+                    <h3 class="dev-title">Developer Menu</h3>
+                    <span class="dev-icon">🔧</span>
+                </div>
+                <div class="dev-menu-content">
+                    <div class="dev-section">
+                        <h4 class="dev-section-title">⚡ Güç</h4>
+                        <div class="dev-buttons">
+                            <button id="dev-godmode" class="dev-btn">
+                                <span class="dev-btn-icon">💪</span>
+                                <span class="dev-btn-text">Ölümsüzlük</span>
+                                <span class="dev-btn-status" id="godmode-status">OFF</span>
+                            </button>
+                            <button id="dev-infinite-lives" class="dev-btn">
+                                <span class="dev-btn-icon">❤️</span>
+                                <span class="dev-btn-text">Sonsuz Can</span>
+                                <span class="dev-btn-status" id="infinite-lives-status">OFF</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dev-section">
+                        <h4 class="dev-section-title">🎮 Oyun</h4>
+                        <div class="dev-buttons">
+                            <button id="dev-next-wave" class="dev-btn">
+                                <span class="dev-btn-icon">⏭️</span>
+                                <span class="dev-btn-text">Sonraki Seviye</span>
+                            </button>
+                            <button id="dev-kill-boss" class="dev-btn">
+                                <span class="dev-btn-icon">⚔️</span>
+                                <span class="dev-btn-text">Boss'u Öldür</span>
+                            </button>
+                            <button id="dev-add-score" class="dev-btn">
+                                <span class="dev-btn-icon">💯</span>
+                                <span class="dev-btn-text">+1000 Skor</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dev-section">
+                        <h4 class="dev-section-title">🎯 Hızlı Atlama</h4>
+                        <div class="dev-buttons dev-wave-buttons">
+                            <button class="dev-btn-small" data-wave="5">Dalga 5</button>
+                            <button class="dev-btn-small" data-wave="8">Dalga 8</button>
+                            <button class="dev-btn-small" data-wave="10">Dalga 10</button>
+                            <button class="dev-btn-small" data-wave="12">Dalga 12</button>
+                        </div>
+                    </div>
+                </div>
+                <p class="dev-warning">⚠️ Sayfa yenilendiğinde sıfırlanır</p>
             </div>
         </div>
         <div id="game-over-screen" class="game-over-screen">

@@ -800,29 +800,51 @@ body {
     display: flex;
 }
 
-.game-close-btn {
-    position: absolute;
-    top: 60px;
-    right: 12px;
-    z-index: 2100;
-    background: rgba(255, 77, 109, 0.2);
-    border: 1px solid rgba(255, 77, 109, 0.3);
+/* ============================================== */
+/* HUD BUTTONS (Pause & Close)                    */
+/* ============================================== */
+.game-hud-buttons {
+    flex-direction: row !important;
+    gap: 8px;
+    justify-content: center;
+    min-width: 80px;
+}
+
+.hud-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     color: #ffe5ec;
-    font-size: 1.1rem;
+    font-size: 1rem;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
-    display: none; /* Hidden by default, shown by JavaScript */
+    display: flex;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(5px);
 }
 
-.game-close-btn:hover {
+.hud-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hud-close-btn {
+    background: rgba(255, 77, 109, 0.2);
+    border-color: rgba(255, 77, 109, 0.3);
+}
+
+.hud-close-btn:hover {
     background: rgba(255, 77, 109, 0.4);
-    transform: scale(1.05);
+}
+
+/* Hide old button styles - kept for backwards compatibility */
+.game-close-btn,
+.game-pause-btn {
+    display: none !important;
 }
 
 /* ============================================== */
@@ -840,7 +862,6 @@ body {
     border-bottom: 2px solid rgba(255, 77, 109, 0.3);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
-
 .game-hud-item {
     display: flex;
     flex-direction: column;
@@ -848,6 +869,8 @@ body {
     gap: 1px;
     flex: 1;
     min-width: 60px;
+    max-width: 120px; /* Prevent wave name from taking too much space */
+    overflow: hidden;
 }
 
 .hud-label {
@@ -880,6 +903,10 @@ body {
     letter-spacing: 0.3px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     margin-top: -1px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #game-lives {
@@ -963,24 +990,32 @@ body {
 
 /* Touch Area Mode - Adjust height and position, leave bottom for touch */
 .game-overlay.touch-area-mode #game-canvas {
-    height: 85vh;
-    height: 85dvh; /* Dynamic viewport for iOS */
-    max-height: 85vh;
-    max-height: 85dvh;
+    height: 85vh !important;
+    height: 85dvh !important; /* Dynamic viewport for iOS */
+    max-height: 85vh !important;
+    max-height: 85dvh !important;
 }
 
 .game-overlay.touch-area-mode .game-characters {
     /* Height set by JavaScript for accurate positioning */
-    height: 85vh;
+    height: 85vh !important;
+    height: 85dvh !important;
 }
 
 .game-overlay.touch-area-mode .burak-char {
-    /* Position set by JavaScript for accurate positioning */
-    bottom: 10px;
+    /* Position character closer to bottom in touch area mode */
+    bottom: -30px !important; /* Negative value to move it down, closer to HUD */
 }
 
 .game-overlay.touch-area-mode .game-wave-banner {
-    top: 45%;
+    top: 45% !important;
+}
+
+/* Fix HUD position in touch area mode - prevent jumping when boss bar appears/disappears */
+.game-overlay.touch-area-mode .game-hud {
+    position: relative;
+    margin-top: 0;
+    /* Ensure HUD stays at the same position regardless of boss bar visibility */
 }
 
 /* Mobile touch improvements - make entire game area touchable */
@@ -996,7 +1031,8 @@ body {
     }
     
     /* Ensure character is visible and positioned correctly on mobile */
-    .burak-char {
+    /* Only apply when NOT in touch-area-mode */
+    .game-overlay:not(.touch-area-mode) .burak-char {
         bottom: 20px;
         z-index: 10;
     }
@@ -1205,6 +1241,49 @@ body {
     transform: translateY(-2px);
 }
 
+.game-btn-dev {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(168, 85, 247, 0.3));
+    color: #fff;
+    border: 1px solid rgba(138, 43, 226, 0.5);
+    box-shadow: 0 5px 20px rgba(138, 43, 226, 0.3);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    max-height: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+.game-btn-dev:not(.hidden) {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 100px;
+    padding: 12px 28px;
+    margin: 0;
+    animation: devBtnReveal 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes devBtnReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotateY(90deg);
+    }
+    50% {
+        transform: scale(1.1) rotateY(0deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotateY(0deg);
+    }
+}
+
+.game-btn-dev:hover {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.5), rgba(168, 85, 247, 0.5));
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
+}
+
 /* Character GIFs */
 .game-characters {
     position: absolute;
@@ -1309,6 +1388,7 @@ body {
     .game-hud-item {
         gap: 1px;
         min-width: 50px;
+        max-width: 90px; /* Smaller max width on mobile */
     }
 
     .hud-label {
@@ -1326,23 +1406,19 @@ body {
     }
 
     .hud-sub-value {
-        font-size: 0.45rem;
+        font-size: 0.42rem; /* Smaller font for better fit on mobile */
+        letter-spacing: 0.2px;
     }
 
-    .game-close-btn {
+    .hud-btn {
         width: 32px;
         height: 32px;
-        top: 56px;
-        right: 10px;
-        font-size: 1rem;
-    }
-
-    .game-pause-btn {
-        width: 32px;
-        height: 32px;
-        top: 56px;
-        left: 10px;
         font-size: 0.9rem;
+    }
+
+    .game-hud-buttons {
+        gap: 6px;
+        min-width: 70px;
     }
 
     .game-over-title {
@@ -1474,6 +1550,7 @@ body {
 
     .game-hud-item {
         gap: 1px;
+        max-width: 100px; /* Limit width in landscape mode */
     }
 
     .hud-label {
@@ -1489,23 +1566,19 @@ body {
     }
     
     .hud-sub-value {
-        font-size: 0.45rem;
+        font-size: 0.42rem; /* Smaller font for landscape */
+        letter-spacing: 0.2px;
     }
 
-    .game-close-btn {
-        width: 30px;
-        height: 30px;
-        top: 54px;
-        right: 8px;
-        font-size: 0.9rem;
+    .hud-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
     }
 
-    .game-pause-btn {
-        width: 30px;
-        height: 30px;
-        top: 54px;
-        left: 8px;
-        font-size: 0.9rem;
+    .game-hud-buttons {
+        gap: 5px;
+        min-width: 60px;
     }
     
     .game-wave-banner {
@@ -1516,32 +1589,6 @@ body {
 
 /* ============================================== */
 /* PAUSE BUTTON                                   */
-/* ============================================== */
-.game-pause-btn {
-    position: absolute;
-    top: 60px;
-    left: 12px;
-    z-index: 2250;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: white;
-    font-size: 1rem;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: none; /* Hidden by default, shown by JavaScript */
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(8px);
-    transition: all 0.2s;
-}
-
-.game-pause-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.05);
-}
-
 /* ============================================== */
 /* ============================================== */
 /* STATS GRID & HIGH SCORE                        */
@@ -1791,6 +1838,13 @@ body {
     font-size: 1rem;
     color: rgba(255, 255, 255, 0.7);
     margin-top: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.paused-sub:hover {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .paused-buttons {
@@ -1800,6 +1854,232 @@ body {
     margin-top: 25px;
     width: 100%;
     max-width: 280px;
+}
+
+/* ============================================== */
+/* DEVELOPER MENU (Hidden Easter Egg)            */
+/* ============================================== */
+.dev-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(20, 10, 30, 0.98), rgba(40, 20, 50, 0.98));
+    border: 2px solid rgba(138, 43, 226, 0.6);
+    border-radius: 20px;
+    padding: 20px;
+    max-width: 90%;
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 
+        0 0 40px rgba(138, 43, 226, 0.4),
+        inset 0 0 20px rgba(138, 43, 226, 0.1);
+    z-index: 2500;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transform: translate(-50%, -50%) scale(0.8);
+}
+
+.dev-menu:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.dev-menu-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 77, 109, 0.2);
+    border: 1px solid rgba(255, 77, 109, 0.4);
+    color: #fff;
+    font-size: 1.2rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.dev-menu-close:hover {
+    background: rgba(255, 77, 109, 0.4);
+    transform: scale(1.1) rotate(90deg);
+}
+
+.dev-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+}
+
+.dev-icon {
+    font-size: 1.5rem;
+    animation: devIconSpin 3s linear infinite;
+}
+
+@keyframes devIconSpin {
+    0%, 90% { transform: rotate(0deg); }
+    95% { transform: rotate(20deg); }
+    100% { transform: rotate(0deg); }
+}
+
+.dev-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+    letter-spacing: 1px;
+}
+
+.dev-menu-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.dev-section {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+.dev-section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #c084fc;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dev-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dev-wave-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.dev-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(168, 85, 247, 0.2));
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.dev-btn:hover {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.4), rgba(168, 85, 247, 0.4));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+}
+
+.dev-btn:active {
+    transform: translateY(0);
+}
+
+.dev-btn-icon {
+    font-size: 1.2rem;
+}
+
+.dev-btn-text {
+    flex: 1;
+}
+
+.dev-btn-status {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #888;
+}
+
+.dev-btn-status.active {
+    background: rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+}
+
+.dev-btn-small {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid rgba(138, 43, 226, 0.4);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dev-btn-small:hover {
+    background: rgba(138, 43, 226, 0.4);
+    transform: scale(1.05);
+}
+
+.dev-warning {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.7rem;
+    color: rgba(255, 193, 7, 0.8);
+    text-align: center;
+    margin: 15px 0 0 0;
+    padding-top: 15px;
+    border-top: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+/* Mobile responsive for dev menu */
+@media (max-width: 768px) {
+    .dev-menu {
+        width: 85%;
+        padding: 15px;
+        max-height: 70vh;
+    }
+    
+    .dev-title {
+        font-size: 1.1rem;
+    }
+    
+    .dev-icon {
+        font-size: 1.2rem;
+    }
+    
+    .dev-btn {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .dev-btn-icon {
+        font-size: 1rem;
+    }
 }
 
 /* Landscape mode support for pause screen */
@@ -2010,10 +2290,6 @@ body {
     
     .music-control {
         top: calc(25px + env(safe-area-inset-top));
-    }
-    
-    .game-close-btn, .game-pause-btn {
-        top: calc(60px + env(safe-area-inset-top));
     }
     
     /* Optimize for landscape mode */

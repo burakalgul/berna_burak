@@ -102,11 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
             settings = { ...settings, ...JSON.parse(saved) };
         }
         
-        // Force touch area mode on iOS for better experience
-        if (isIOS && !saved) {
-            settings.touchArea = true;
-        }
-        
         // Apply settings to UI
         if (settingMusic) settingMusic.checked = settings.music;
         if (settingSfx) settingSfx.checked = settings.sfx;
@@ -239,6 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     gameOverlay.classList.remove('touch-area-mode');
                 }
+            }
+            
+            // If game is active, resize to apply changes immediately
+            if (gameActive) {
+                resizeGameCanvas();
             }
         });
     }
@@ -1528,6 +1528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let bernaDir = 1;
     let gameTime = 0;
     let gameFrameCount = 0;
+    let lastMaxHPSpawn = 0; // Cooldown timer for max HP power-up
     let currentWave = 1;
     let waveScoreEarned = 0; // NEW: track points in current wave
     let waveTransitioning = false;
@@ -1585,6 +1586,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let bossClickCooldown = 0; // NEW: Prevent spam clicking (0.5s cooldown)
     let bossLastDamageTime = 0; // NEW: Track last damage time
     let bernaLastSpecialHeartTime = 0; // NEW: Cooldown for special heart spawning
+    let lastBossPowerUpSpawn = 0; // NEW: Cooldown for power-ups during boss fights
     
     // --- NEW: Boss Controller Instance ---
     let bossController = null;
@@ -1634,11 +1636,238 @@ document.addEventListener('DOMContentLoaded', () => {
     const pauseSettingsBtn = document.getElementById('pause-settings');
     const pauseQuitBtn = document.getElementById('pause-quit');
 
+    // ===================================================================
+    // DEVELOPER MENU (Hidden Easter Egg)
+    // ===================================================================
+    const pausedSubText = document.getElementById('paused-sub-text');
+    const devMenu = document.getElementById('dev-menu');
+    const devMenuCloseBtn = document.getElementById('dev-menu-close');
+    const devMenuBtn = document.getElementById('dev-menu-btn');
+    let devClickCount = 0;
+    let devClickTimer = null;
+    let devMenuActive = false;
+    let devButtonUnlocked = false;
+    
+    // Developer mode flags (reset on page reload)
+    let devGodMode = false;
+    let devInfiniteLives = false;
+    
+    // Developer menu button click handler
+    if (devMenuBtn) {
+        devMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (devMenu) {
+                devMenu.classList.remove('hidden');
+                devMenuActive = true;
+                playSound('powerup');
+                HapticFeedback.success();
+            }
+        });
+    }
+    
+    // Close developer menu
+    if (devMenuCloseBtn) {
+        devMenuCloseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (devMenu) {
+                devMenu.classList.add('hidden');
+                devMenuActive = false;
+                playSound('combo');
+            }
+        });
+    }
+    
+    // Close dev menu when clicking outside
+    if (devMenu) {
+        devMenu.addEventListener('click', (e) => {
+            // Only close if clicking the background (not the content)
+            if (e.target === devMenu) {
+                devMenu.classList.add('hidden');
+                devMenuActive = false;
+                playSound('combo');
+            }
+        });
+    }
+    
+    // Click counter for secret button unlock
+    if (pausedSubText) {
+        pausedSubText.addEventListener('click', () => {
+            if (devButtonUnlocked) return; // Already unlocked
+            
+            devClickCount++;
+            
+            // Visual feedback
+            pausedSubText.style.transform = `scale(${1 + devClickCount * 0.02})`;
+            setTimeout(() => {
+                pausedSubText.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Reset counter after 2 seconds of inactivity
+            clearTimeout(devClickTimer);
+            devClickTimer = setTimeout(() => {
+                devClickCount = 0;
+            }, 2000);
+            
+            // Unlock dev button after 10 clicks
+            if (devClickCount >= 10) {
+                devButtonUnlocked = true;
+                if (devMenuBtn) {
+                    devMenuBtn.classList.remove('hidden');
+                    playSound('powerup');
+                    HapticFeedback.success();
+                    
+                    // Add sparkle effect
+                    pausedSubText.style.textShadow = '0 0 20px rgba(138, 43, 226, 0.8)';
+                    setTimeout(() => {
+                        pausedSubText.style.textShadow = '';
+                    }, 1000);
+                }
+            }
+        });
+    }
+    
+    // Developer Menu Buttons
+    const devGodModeBtn = document.getElementById('dev-godmode');
+    const devInfiniteLivesBtn = document.getElementById('dev-infinite-lives');
+    const devNextWaveBtn = document.getElementById('dev-next-wave');
+    const devKillBossBtn = document.getElementById('dev-kill-boss');
+    const devAddScoreBtn = document.getElementById('dev-add-score');
+    const devWaveBtns = document.querySelectorAll('.dev-btn-small[data-wave]');
+    
+    // God Mode Toggle
+    if (devGodModeBtn) {
+        devGodModeBtn.addEventListener('click', () => {
+            devGodMode = !devGodMode;
+            const statusEl = document.getElementById('godmode-status');
+            if (statusEl) {
+                statusEl.textContent = devGodMode ? 'ON' : 'OFF';
+                statusEl.classList.toggle('active', devGodMode);
+            }
+            playSound('combo');
+            HapticFeedback.light();
+        });
+    }
+    
+    // Infinite Lives Toggle
+    if (devInfiniteLivesBtn) {
+        devInfiniteLivesBtn.addEventListener('click', () => {
+            devInfiniteLives = !devInfiniteLives;
+            const statusEl = document.getElementById('infinite-lives-status');
+            if (statusEl) {
+                statusEl.textContent = devInfiniteLives ? 'ON' : 'OFF';
+                statusEl.classList.toggle('active', devInfiniteLives);
+            }
+            if (devInfiniteLives && gameActive) {
+                gameLives = 3;
+                updateLivesDisplay();
+            }
+            playSound('combo');
+            HapticFeedback.light();
+        });
+    }
+    
+    // Next Wave
+    if (devNextWaveBtn) {
+        devNextWaveBtn.addEventListener('click', () => {
+            if (!gameActive) return;
+            
+            // Complete current wave
+            if (bossActive) {
+                bossHealth = 0;
+                bossDefeated = true;
+                bossDefeatedTimer = 0.01; // Skip animation
+            }
+            
+            // Force wave completion
+            currentWave++;
+            if (currentWave > WAVES.length) {
+                currentWave = WAVES.length;
+            }
+            
+            playSound('powerup');
+            HapticFeedback.medium();
+            addCatchEffect(gameW / 2, gameH / 2, '⏭️ Seviye Atlandı!', true);
+        });
+    }
+    
+    // Kill Boss
+    if (devKillBossBtn) {
+        devKillBossBtn.addEventListener('click', () => {
+            if (!gameActive || !bossActive) return;
+            
+            bossHealth = 0;
+            bossDefeated = true;
+            bossDefeatedTimer = 0.01; // Skip animation
+            
+            playSound('bossDeath');
+            HapticFeedback.bossDefeat();
+            addCatchEffect(bossX, bossY, '💀 Boss Öldürüldü!', true);
+        });
+    }
+    
+    // Add Score
+    if (devAddScoreBtn) {
+        devAddScoreBtn.addEventListener('click', () => {
+            if (!gameActive) return;
+            
+            score += 1000;
+            updateHUD();
+            
+            playSound('combo');
+            HapticFeedback.light();
+            addCatchEffect(gameW / 2, gameH / 4, '+1000 💯', true);
+        });
+    }
+    
+    // Wave Jump Buttons
+    devWaveBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!gameActive) return;
+            
+            const targetWave = parseInt(btn.dataset.wave);
+            if (targetWave > 0 && targetWave <= WAVES.length) {
+                // Set wave
+                currentWave = targetWave;
+                waveScoreEarned = 0;
+                bossWarningShown = false;
+                
+                // Reset boss state
+                bossActive = false;
+                bossDefeated = false;
+                bossIntroTimer = 0;
+                bossDefeatedTimer = 0;
+                
+                // Clear hearts
+                fallingHearts.length = 0;
+                
+                // Update HUD
+                if (gameWaveEl) gameWaveEl.textContent = currentWave;
+                
+                // Show wave banner
+                const waveConfig = WAVES[currentWave - 1];
+                if (waveConfig) {
+                    showWaveBanner(waveConfig.name, waveConfig.subtitle);
+                }
+                
+                playSound('powerup');
+                HapticFeedback.medium();
+            }
+        });
+    });
+
     if (pauseResumeBtn) {
         pauseResumeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             gamePaused = false;
             if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+            
+            // Hide dev button and menu when resuming
+            if (devMenuBtn) devMenuBtn.classList.add('hidden');
+            if (devMenu) devMenu.classList.add('hidden');
+            devButtonUnlocked = false;
+            devMenuActive = false;
+            devClickCount = 0;
+            
             gameLoop(gameSessionId);
             playSound('combo');
         });
@@ -1663,6 +1892,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             gamePaused = false;
             if (gamePausedScreen) gamePausedScreen.classList.remove('active');
+            
+            // Hide dev button and menu when quitting
+            if (devMenuBtn) devMenuBtn.classList.add('hidden');
+            if (devMenu) devMenu.classList.add('hidden');
+            devButtonUnlocked = false;
+            devMenuActive = false;
+            devClickCount = 0;
+            
             closeGame();
         });
     }
@@ -2648,10 +2885,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Touch area mode: adjust character container and Burak position
         const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+        const gameCharacters = document.querySelector('.game-characters');
+        const burakChar = document.querySelector('.burak-char');
+        
         if (isTouchAreaMode) {
-            const gameCharacters = document.querySelector('.game-characters');
-            const burakChar = document.querySelector('.burak-char');
-            
             if (gameCharacters) {
                 // Set character container to match canvas height
                 gameCharacters.style.height = gameH + 'px';
@@ -2659,9 +2896,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (burakChar) {
-                // Position Burak at bottom of canvas (20px from bottom)
-                burakChar.style.bottom = '20px';
+                // Position Burak closer to bottom in touch area mode (negative to move down)
+                burakChar.style.bottom = '-30px';
                 burakChar.style.marginBottom = '0';
+            }
+        } else {
+            // Reset to default when touch area mode is disabled
+            if (gameCharacters) {
+                gameCharacters.style.height = '100%';
+                gameCharacters.style.maxHeight = '';
+            }
+            
+            if (burakChar) {
+                // Reset to default bottom position
+                burakChar.style.bottom = '20px';
+                burakChar.style.marginBottom = '';
             }
         }
     }
@@ -2748,13 +2997,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function getCurrentWaveConfig() {
         return WAVES[Math.min(currentWave - 1, WAVES.length - 1)];
     }
+    
+    // Shorten wave name for HUD display
+    function getShortWaveName(fullName) {
+        // Remove emojis and trim
+        const nameWithoutEmoji = fullName.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+        // If still too long, truncate
+        if (nameWithoutEmoji.length > 12) {
+            return nameWithoutEmoji.substring(0, 11) + '...';
+        }
+        return nameWithoutEmoji;
+    }
 
     function showWaveBanner(text, subtitle) {
         if (!waveBanner) return;
         waveTransitioning = true;
         waveBanner.innerHTML = text + (subtitle ? '<br><span style="font-size:0.5em;font-family:Montserrat;opacity:0.7">' + subtitle + '</span>' : '');
         waveBanner.classList.add('active');
-        if (gameWaveNameEl) gameWaveNameEl.textContent = text;
+        // Use shortened name for HUD
+        if (gameWaveNameEl) gameWaveNameEl.textContent = getShortWaveName(text);
 
         // Trigger background color change to target wave's theme
         updateWaveColors();
@@ -3019,6 +3280,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (invulnerableTimer > 0) return; // Ignore damage if invulnerable
 
+        // Developer God Mode - no damage
+        if (devGodMode) {
+            addCatchEffect(burakX, gameH - BURAK_SPRITE_SIZE / 2, '🔧 God Mode!', false);
+            return;
+        }
+
         gameLives--;
         damageFlash = 1;
         invulnerableTimer = 2.0; // 2 seconds invulnerability
@@ -3037,6 +3304,12 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 if (gameActive) burakEl.style.filter = '';
             }, 600);
+        }
+
+        // Developer Infinite Lives - restore lives
+        if (devInfiniteLives && gameLives < 3) {
+            gameLives = 3;
+            updateLivesDisplay();
         }
 
         if (gameLives <= 0) {
@@ -3246,7 +3519,41 @@ document.addEventListener('DOMContentLoaded', () => {
         gameCtx.globalAlpha = 1;
 
         // Define burakTop early for use in boss abilities
-        let burakTop = gameH - BURAK_SPRITE_SIZE / 2;
+        // Calculate based on actual DOM element position for accuracy
+        let burakTop;
+        let burakVisualY; // Visual center for effects like shield
+        
+        if (burakEl && burakEl.offsetHeight > 0) {
+            // Get actual character height from DOM
+            const characterHeight = burakEl.offsetHeight;
+            // In touch area mode, character is at bottom: -30px (moved down, extends below canvas)
+            // In normal mode, character is at bottom: 20px
+            const bottomOffset = isTouchAreaMode ? -30 : 20;
+            
+            // Character center Y position for collision
+            burakTop = gameH - bottomOffset - (characterHeight / 2);
+            
+            // Visual center for effects (shield, magnet, etc.)
+            // Position shield at character's true center (50% from bottom)
+            if (isTouchAreaMode) {
+                // Character bottom is at gameH + 30 (because bottom: -30px)
+                // Character center is at: gameH + 30 - (characterHeight / 2)
+                burakVisualY = gameH + 30 - (characterHeight / 2);
+            } else {
+                // Normal mode: bottom is at gameH - 20
+                // Character center is at: gameH - 20 - (characterHeight / 2)
+                burakVisualY = gameH - 20 - (characterHeight / 2);
+            }
+        } else {
+            // Fallback to estimated values if DOM not ready (assuming 100px height)
+            if (isTouchAreaMode) {
+                burakTop = gameH - 20;
+                burakVisualY = gameH + 30 - 50; // gameH - 20
+            } else {
+                burakTop = gameH - 70;
+                burakVisualY = gameH - 70;
+            }
+        }
         
         // ============================================
         // FINAL BOSS PHASE 3: PLATFORM CLIMBING
@@ -4224,8 +4531,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameCtx.restore();
             }
             
-            // Draw Boss HP Bar (Always visible, at top of screen)
-            if (bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
+            // Draw Boss HP Bar (Always visible during boss phase, even during intro/defeated)
+            // This prevents HUD jumping in touch area mode
+            if (bossActive) {
                 drawBossHPBar();
             }
             
@@ -4264,23 +4572,65 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             gameCtx.fillRect(barX, barY, barWidth, barHeight);
             
-            // HP Bar fill (color based on phase)
-            const hpPercent = bossHP / bossMaxHP;
-            let barColor = bossConfig.color;
-            if (bossPhase === 3) barColor = '#ff0000';
-            else if (bossPhase === 2) barColor = '#ff8800';
-            
-            const gradient = gameCtx.createLinearGradient(barX, 0, barX + barWidth * hpPercent, 0);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, adjustBrightness(barColor, -30));
-            gameCtx.fillStyle = gradient;
-            gameCtx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
-            
-            // Pulsing effect for low HP
-            if (bossPhase === 3) {
-                const pulse = 0.5 + Math.sin(gameTime * 10) * 0.5;
-                gameCtx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.3})`;
+            // During intro or defeated, show a placeholder or different visual
+            if (bossIntroTimer > 0) {
+                // Show "BOSS INCOMING" or similar during intro
+                gameCtx.fillStyle = 'rgba(255, 77, 109, 0.3)';
+                gameCtx.fillRect(barX, barY, barWidth, barHeight);
+                
+                gameCtx.font = 'bold 10px Montserrat';
+                gameCtx.fillStyle = '#ffffff';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.shadowColor = 'rgba(0, 0, 0, 1)';
+                gameCtx.shadowBlur = 4;
+                gameCtx.fillText(`${bossConfig.emoji} BOSS GELİYOR...`, barX + barWidth / 2, barY + barHeight / 2);
+            } else if (bossDefeatedTimer > 0) {
+                // Show "BOSS DEFEATED" during defeated animation
+                gameCtx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                gameCtx.fillRect(barX, barY, barWidth, barHeight);
+                
+                gameCtx.font = 'bold 10px Montserrat';
+                gameCtx.fillStyle = '#ffffff';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.shadowColor = 'rgba(0, 0, 0, 1)';
+                gameCtx.shadowBlur = 4;
+                gameCtx.fillText(`${bossConfig.emoji} BOSS YENİLDİ!`, barX + barWidth / 2, barY + barHeight / 2);
+            } else {
+                // Normal HP bar display
+                // HP Bar fill (color based on phase)
+                const hpPercent = bossHP / bossMaxHP;
+                let barColor = bossConfig.color;
+                if (bossPhase === 3) barColor = '#ff0000';
+                else if (bossPhase === 2) barColor = '#ff8800';
+                
+                const gradient = gameCtx.createLinearGradient(barX, 0, barX + barWidth * hpPercent, 0);
+                gradient.addColorStop(0, barColor);
+                gradient.addColorStop(1, adjustBrightness(barColor, -30));
+                gameCtx.fillStyle = gradient;
                 gameCtx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+                
+                // Pulsing effect for low HP
+                if (bossPhase === 3) {
+                    const pulse = 0.5 + Math.sin(gameTime * 10) * 0.5;
+                    gameCtx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.3})`;
+                    gameCtx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+                }
+                
+                // Boss label - compact, on the left side of bar
+                gameCtx.font = 'bold 10px Montserrat';
+                gameCtx.fillStyle = '#ffffff';
+                gameCtx.textAlign = 'left';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.shadowColor = 'rgba(0, 0, 0, 1)';
+                gameCtx.shadowBlur = 4;
+                gameCtx.fillText(`${bossConfig.emoji} BOSS`, barX + 5, barY + barHeight / 2);
+                
+                // HP text - on the right side of bar
+                gameCtx.textAlign = 'right';
+                gameCtx.fillStyle = '#ffffff';
+                gameCtx.fillText(`${bossHP}/${bossMaxHP}`, barX + barWidth - 5, barY + barHeight / 2);
             }
             
             // Border
@@ -4288,22 +4638,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.lineWidth = 1;
             gameCtx.strokeRect(barX, barY, barWidth, barHeight);
             
-            // Boss label - compact, on the left side of bar
-            gameCtx.font = 'bold 10px Montserrat';
-            gameCtx.fillStyle = '#ffffff';
-            gameCtx.textAlign = 'left';
-            gameCtx.textBaseline = 'middle';
-            gameCtx.shadowColor = 'rgba(0, 0, 0, 1)';
-            gameCtx.shadowBlur = 4;
-            gameCtx.fillText(`${bossConfig.emoji} BOSS`, barX + 5, barY + barHeight / 2);
-            
-            // HP text - on the right side of bar
-            gameCtx.textAlign = 'right';
-            gameCtx.fillStyle = '#ffffff';
-            gameCtx.fillText(`${bossHP}/${bossMaxHP}`, barX + barWidth - 5, barY + barHeight / 2);
-            
             // Kinetic Charge Bar (Boss 4 only) - even more compact
-            if (bossConfig.ability === 'windy_day' && bossController.kineticCharge > 0) {
+            // Only show during active boss fight (not intro/defeated)
+            if (bossConfig.ability === 'windy_day' && bossController.kineticCharge > 0 && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
                 const chargeBarY = barY + barHeight + 3;
                 const chargeBarHeight = 6;
                 const chargePercent = bossController.kineticCharge / 100;
@@ -4738,31 +5075,74 @@ document.addEventListener('DOMContentLoaded', () => {
         // Spawn power-ups
         if (!waveTransitioning && gamePowerUps.length < MAX_POWER_UPS) {
             let spawnChance;
+            let shouldSpawnPowerUp = false;
             
             if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
-                // During boss fight: Much rarer (40% of normal rate)
-                spawnChance = 0.002; // 0.005 * 0.4
+                // During boss fight: Much rarer (20% of normal rate - reduced from 40%)
+                // AND have a 5 second cooldown to prevent multiple spawns
+                const now = Date.now();
+                if (now - lastBossPowerUpSpawn >= 5000) { // 5 second cooldown
+                    // Check if there's already a power-up on screen
+                    const hasPowerUp = gamePowerUps.length > 0;
+                    
+                    if (!hasPowerUp) {
+                        spawnChance = 0.001; // 0.005 * 0.2 (reduced from 0.002)
+                        shouldSpawnPowerUp = Math.random() < spawnChance;
+                        if (shouldSpawnPowerUp) {
+                            lastBossPowerUpSpawn = now;
+                        }
+                    }
+                }
             } else {
                 // Normal gameplay: Regular rate
                 spawnChance = 0.005;
+                shouldSpawnPowerUp = Math.random() < spawnChance;
             }
             
-            if (Math.random() < spawnChance) {
+            if (shouldSpawnPowerUp) {
                 // Filter available power-ups based on game state
                 let availablePowerUps = POWERUP_TYPES.filter(pu => {
                     // Don't spawn maxhp if already at max (8 lives)
                     if (pu.type === 'maxhp' && maxLives >= 8) return false;
+                    
+                    // Max HP Cooldown: Don't spawn if cooldown active
+                    if (pu.type === 'maxhp') {
+                        const timeSinceLastMaxHP = gameTime - lastMaxHPSpawn;
+                        if (timeSinceLastMaxHP < 30) return false; // 30 second cooldown
+                    }
+                    
                     return true;
                 });
                 
+                // Reduce max HP spawn chance (make it 4x rarer)
                 if (availablePowerUps.length > 0) {
-                    const pu = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
-                    console.log('Power-up spawned:', pu.type, pu.emoji);
+                    let selectedPU;
+                    
+                    // 75% chance to filter out maxhp if it's in the list
+                    const hasMaxHP = availablePowerUps.some(pu => pu.type === 'maxhp');
+                    if (hasMaxHP && Math.random() < 0.75) {
+                        // Filter out maxhp for this spawn
+                        const filteredPowerUps = availablePowerUps.filter(pu => pu.type !== 'maxhp');
+                        if (filteredPowerUps.length > 0) {
+                            selectedPU = filteredPowerUps[Math.floor(Math.random() * filteredPowerUps.length)];
+                        } else {
+                            selectedPU = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
+                        }
+                    } else {
+                        selectedPU = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
+                    }
+                    
+                    // Track max HP spawn time
+                    if (selectedPU.type === 'maxhp') {
+                        lastMaxHPSpawn = gameTime;
+                    }
+                    
+                    console.log('Power-up spawned:', selectedPU.type, selectedPU.emoji);
                     gamePowerUps.push({
                         x: Math.random() * (gameW - 80) + 40,
                         y: -30,
-                        vy: pu.speed,
-                        type: pu,
+                        vy: selectedPU.speed,
+                        type: selectedPU,
                         rotation: 0,
                         glow: 0
                     });
@@ -4866,8 +5246,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Adjust collision area for touch mode - wider vertical range for easier catching
-            const catchVerticalRange = settings.touchArea ? 50 : 40; // Increased from 30 to 50
-            const catchVerticalOffset = settings.touchArea ? 40 : 60;
+            const catchVerticalRange = settings.touchArea ? 120 : 40; // Increased upward range for touch mode
+            const catchVerticalOffset = settings.touchArea ? 50 : 60; // Reduced downward range for touch mode
             
             if (h.y > burakTop - catchVerticalRange && h.y < burakTop + catchVerticalOffset && // Widened collision
                 Math.abs(h.x - burakX) < BURAK_CATCH_W / 2 + h.type.size / 2) {
@@ -5677,9 +6057,10 @@ document.addEventListener('DOMContentLoaded', () => {
             pu.glow = Math.sin(gameTime * 5) * 0.3 + 0.7;
 
             // Power-up collision (Widened range and debugged)
-            // Debug collision: Check if Burak is close enough horizontally and vertically
+            // Use visual center for accurate collision in touch area mode
+            const powerUpCollisionY = isTouchAreaMode ? burakVisualY - 60 : burakVisualY;
             const xDist = Math.abs(pu.x - burakX);
-            const yDist = Math.abs(pu.y - (burakTop + 30)); // Center of Burak
+            const yDist = Math.abs(pu.y - powerUpCollisionY);
 
             if (yDist < 60 && xDist < 60) {
                 console.log('Power-up caught:', pu.type.type);
@@ -5787,7 +6168,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.lineWidth = 2;
             gameCtx.setLineDash([5, 5]);
             gameCtx.beginPath();
-            gameCtx.arc(burakX, burakTop, BURAK_CATCH_W / 2 + 10, 0, Math.PI * 2);
+            // Use visual center position for proper alignment in touch area mode
+            const catchAreaY = isTouchAreaMode ? burakVisualY - 60 : burakVisualY;
+            gameCtx.arc(burakX, catchAreaY, BURAK_CATCH_W / 2 + 10, 0, Math.PI * 2);
             gameCtx.stroke();
             gameCtx.setLineDash([]);
 
@@ -5795,7 +6178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.font = '10px Montserrat, sans-serif';
             gameCtx.fillStyle = `rgba(255, 204, 213, ${areaAlpha})`;
             gameCtx.textAlign = 'center';
-            gameCtx.fillText('Yakalama Alanı', burakX, burakTop + BURAK_SPRITE_SIZE / 2 + 20);
+            gameCtx.fillText('Yakalama Alanı', burakX, catchAreaY + BURAK_SPRITE_SIZE / 2 + 20);
         }
 
         // Flashing effect when invulnerable (Canvas only affects what we draw here, not DOM)
@@ -5811,8 +6194,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.strokeStyle = `rgba(100, 200, 255, ${0.4 + Math.sin(gameTime * 6) * 0.2})`;
             gameCtx.lineWidth = 3;
             gameCtx.beginPath();
-            // Slightly above burakTop for better visual alignment
-            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 10, 0, Math.PI * 2);
+            // Use visual center position for proper alignment
+            // Add small offset to center on visible part of character
+            const shieldY = isTouchAreaMode ? burakVisualY - 60 : burakVisualY;
+            gameCtx.arc(burakX, shieldY, BURAK_SPRITE_SIZE / 2 + 10, 0, Math.PI * 2);
             gameCtx.stroke();
         }
 
@@ -5822,8 +6207,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.lineWidth = 2;
             gameCtx.setLineDash([5, 5]);
             gameCtx.beginPath();
-            // Slightly above burakTop for better visual alignment
-            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 20, 0, Math.PI * 2);
+            // Use visual center position for proper alignment
+            const magnetY = isTouchAreaMode ? burakVisualY - 60 : burakVisualY;
+            gameCtx.arc(burakX, magnetY, BURAK_SPRITE_SIZE / 2 + 20, 0, Math.PI * 2);
             gameCtx.stroke();
             gameCtx.setLineDash([]);
         }
@@ -5833,8 +6219,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.strokeStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(gameTime * 10) * 0.3})`;
             gameCtx.lineWidth = 4;
             gameCtx.beginPath();
-            // Slightly above burakTop for better visual alignment
-            gameCtx.arc(burakX, burakTop - 20, BURAK_SPRITE_SIZE / 2 + 15, 0, Math.PI * 2);
+            // Use visual center position for proper alignment
+            const doubleY = isTouchAreaMode ? burakVisualY - 60 : burakVisualY;
+            gameCtx.arc(burakX, doubleY, BURAK_SPRITE_SIZE / 2 + 15, 0, Math.PI * 2);
             gameCtx.stroke();
             
             // Sparkles around character
@@ -5986,14 +6373,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Draw HUD Stats (Canvas)
+        // Draw HUD Stats (Canvas) - Positioned higher to avoid overlap with progress bar
         gameCtx.save();
         gameCtx.font = '14px Montserrat';
         gameCtx.fillStyle = 'rgba(255,255,255,0.7)';
         gameCtx.textAlign = 'left';
-        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - 20);
+        gameCtx.fillText(`❤️ ${totalHeartsCaught}`, 20, gameH - 40);
         gameCtx.textAlign = 'right';
-        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - 20);
+        gameCtx.fillText(`💀 ${bossesDefeated}`, gameW - 20, gameH - 40);
         gameCtx.restore();
 
         // 2. Update DOM Position for GIF
@@ -6129,17 +6516,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Active power-up indicators - Bottom right corner with individual boxes
-        if (shieldActive || magnetActive || slowMoActive || loveBlastActive) {
+        if (shieldActive || magnetActive || slowMoActive || loveBlastActive || doublePointsActive || precisionActive || streakProtectActive) {
             const powerUps = [];
             if (shieldActive) powerUps.push({ emoji: '🛡️', time: Math.ceil(shieldTimer), color: '#4a90e2' });
             if (magnetActive) powerUps.push({ emoji: '🧲', time: Math.ceil(magnetTimer), color: '#e24a90' });
             if (slowMoActive) powerUps.push({ emoji: '⏳', time: Math.ceil(slowMoTimer), color: '#9b59b6' });
             if (loveBlastActive) powerUps.push({ emoji: '🌈', time: Math.ceil(loveBlastTimer), color: '#f39c12' });
+            if (doublePointsActive) powerUps.push({ emoji: '💫', time: Math.ceil(doublePointsTimer), color: '#ffd700' });
+            if (precisionActive) powerUps.push({ emoji: '🎯', time: Math.ceil(precisionTimer), color: '#e74c3c' });
+            if (streakProtectActive) powerUps.push({ emoji: '🔥', time: Math.ceil(streakProtectTimer), color: '#ff6b35' });
             
             const boxSize = 50;
             const spacing = 8;
             const startX = gameW - (boxSize + 10);
-            const startY = gameH - (powerUps.length * (boxSize + spacing) + 10);
+            // Move indicators higher in touch area mode to avoid character overlap
+            const bottomOffset = isTouchAreaMode ? 120 : 10;
+            const startY = gameH - (powerUps.length * (boxSize + spacing) + bottomOffset);
             
             powerUps.forEach((powerUp, index) => {
                 const x = startX;
@@ -6398,6 +6790,7 @@ document.addEventListener('DOMContentLoaded', () => {
         invulnerableTimer = 0;
         shieldActive = false;
         magnetActive = false;
+        lastMaxHPSpawn = 0; // Reset max HP power-up cooldown
         slowMoActive = false;
         bernaX = 0;
         bernaDir = 1;
@@ -6412,6 +6805,8 @@ document.addEventListener('DOMContentLoaded', () => {
         bossDefeatedTimer = 0;
         bossPhase = 1;
         bossLastDamageTime = 0;
+        bernaLastSpecialHeartTime = 0; // Reset special heart cooldown
+        lastBossPowerUpSpawn = 0; // Reset boss power-up cooldown
         gamePaused = false;
         
         // Initialize Achievement System for new game
@@ -6435,7 +6830,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (gameScoreEl) gameScoreEl.textContent = '0';
         if (gameWaveEl) gameWaveEl.textContent = '1';
-        if (gameWaveNameEl) gameWaveNameEl.textContent = WAVES[0].name;
+        if (gameWaveNameEl) gameWaveNameEl.textContent = getShortWaveName(WAVES[0].name);
         if (gameComboEl) gameComboEl.textContent = 'x1';
         updateLivesDisplay();
         if (gameOverScreen) gameOverScreen.classList.remove('active');
@@ -6984,8 +7379,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // DEVELOPER COMMANDS
     // ============================================
-    // Developer state
-    let devGodMode = false;
+    // Developer state (moved to top with pause menu code)
+    // let devGodMode = false; // Already declared above
     let devSpeedMultiplier = 1.0;
 
     window.dev = {
