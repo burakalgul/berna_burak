@@ -34,6 +34,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const statsModal = document.getElementById('stats-modal');
     const statsClose = document.getElementById('stats-close');
 
+    // Mobile Check (Enhanced) - Must be defined before settings
+    // FORCE MOBILE MODE FOR TESTING (set to false for production)
+    const FORCE_MOBILE_MODE = false; // Set to true to test mobile features on desktop
+    
+    const isMobile = FORCE_MOBILE_MODE || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    // iOS-specific viewport height fix
+    function getActualViewportHeight() {
+        // Use visualViewport API for iOS to get actual visible height
+        if (window.visualViewport) {
+            return window.visualViewport.height;
+        }
+        // Fallback to innerHeight
+        return window.innerHeight;
+    }
+    
+    // Update viewport height on iOS when keyboard/bars appear
+    if (isIOS && window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            if (gameActive) {
+                resizeGameCanvas();
+            }
+        });
+    }
+    
+    // Debug info
+    if (FORCE_MOBILE_MODE) {
+        console.log('🔧 Device Info:', {
+            isMobile,
+            isIOS,
+            isAndroid,
+            userAgent: navigator.userAgent,
+            screenWidth: window.innerWidth,
+            screenHeight: window.innerHeight,
+            devicePixelRatio: window.devicePixelRatio,
+            touchSupport: 'ontouchstart' in window,
+            forcedMode: FORCE_MOBILE_MODE,
+            orientation: window.screen.orientation?.type || 'unknown'
+        });
+        console.log('💡 Tip: Press "M" key to toggle mobile mode emulation');
+    }
+
     // State Variables
     let width, height;
     let particles = [];
@@ -48,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sfx: true,
         haptic: true,
         particles: true,
-        touchArea: false
+        touchArea: isMobile // Enable touch area by default on mobile
     };
     
     // Load settings from localStorage
@@ -56,6 +100,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const saved = localStorage.getItem('gameSettings');
         if (saved) {
             settings = { ...settings, ...JSON.parse(saved) };
+        }
+        
+        // Force touch area mode on iOS for better experience
+        if (isIOS && !saved) {
+            settings.touchArea = true;
         }
         
         // Apply settings to UI
@@ -77,11 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveSettings() {
         localStorage.setItem('gameSettings', JSON.stringify(settings));
     }
-
-    // Mobile Check (Enhanced)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
     
     // Mobile-specific settings
     const mobileSettings = {
@@ -2588,8 +2632,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!gameCanvas) return;
         const rect = gameCanvas.parentElement.getBoundingClientRect();
         const hudHeight = document.querySelector('.game-hud')?.offsetHeight || 60;
+        
+        // Use actual viewport height for iOS
+        const viewportHeight = isIOS ? getActualViewportHeight() : window.innerHeight;
+        
         gameW = Math.min(rect.width, 600);
-        gameH = rect.height - hudHeight - 20;
+        // Calculate game height based on actual viewport, minus HUD
+        gameH = viewportHeight - hudHeight - 20;
+        
+        // Ensure minimum height
+        gameH = Math.max(gameH, 400);
+        
         gameCanvas.width = gameW;
         gameCanvas.height = gameH;
         
@@ -4909,7 +4962,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             achievementSystem.incrementStat('diamondHeartsCaught');
                         }
                     } else if (h.type.isLife) {
-                        gameLives = Math.min(5, gameLives + 1);
+                        gameLives = Math.min(maxLives, gameLives + 1);
                         updateLivesDisplay();
                         addCatchEffect(h.x, burakTop, '+1 ❤️', true);
                         playSound('diamond');
@@ -5331,7 +5384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                         } else if (ability === 'healing') {
                             // Boss 6: Işık - Can yenileme
-                            gameLives = Math.min(5, gameLives + 1);
+                            gameLives = Math.min(maxLives, gameLives + 1);
                             updateLivesDisplay();
                             addCatchEffect(burakX, burakTop - 30, '❤️ +1 Can!', true);
                             // Light burst (optimized)
@@ -6062,6 +6115,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ground line
         gameCtx.fillStyle = 'rgba(255, 77, 109, 0.15)';
         gameCtx.fillRect(0, gameH - 5, gameW, 5);
+        
+        // Update character DOM positions (for GIF sprites)
+        if (burakEl) {
+            burakEl.style.left = `${burakX}px`;
+            burakEl.style.transform = `translateX(-50%)`;
+            burakEl.style.display = 'block';
+        }
+        if (bernaEl) {
+            bernaEl.style.left = `${bernaX}px`;
+            bernaEl.style.transform = `translateX(-50%)`;
+            bernaEl.style.display = 'block';
+        }
 
         // Active power-up indicators - Bottom right corner with individual boxes
         if (shieldActive || magnetActive || slowMoActive || loveBlastActive) {
@@ -6210,15 +6275,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add touch control to entire game overlay for touch area mode
+    // Add touch control to entire game overlay for better mobile support
     if (gameOverlay) {
         gameOverlay.addEventListener('touchmove', (e) => {
-            if (!gameActive || gamePaused || !settings.touchArea) return;
+            if (!gameActive || gamePaused) return;
             handleGamePointerMove(e);
         }, { passive: false });
         
         gameOverlay.addEventListener('touchstart', (e) => {
-            if (!gameActive || gamePaused || !settings.touchArea) return;
+            if (!gameActive || gamePaused) return;
             
             // Don't interfere with buttons or modals
             if (e.target.closest('button') || e.target.closest('.modal-overlay')) return;
@@ -6290,9 +6355,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (gameCanvas) gameCanvas.style.display = 'block';
         if (gameHud) gameHud.style.display = 'flex';
-        if (gameChars) gameChars.style.display = 'block';
+        if (gameChars) {
+            gameChars.style.display = 'block';
+            gameChars.style.visibility = 'visible';
+        }
         if (gameCloseBtn) gameCloseBtn.style.display = 'flex';
         if (gamePauseBtn) gamePauseBtn.style.display = 'flex';
+        
+        // Ensure characters are visible
+        if (bernaEl) {
+            bernaEl.style.display = 'block';
+            bernaEl.style.visibility = 'visible';
+        }
+        if (burakEl) {
+            burakEl.style.display = 'block';
+            burakEl.style.visibility = 'visible';
+        }
         
         // Apply touch area mode if enabled
         if (settings.touchArea && gameOverlay) {

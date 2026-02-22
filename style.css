@@ -9,6 +9,7 @@ body {
     font-family: 'Montserrat', sans-serif;
     height: 100%;
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for iOS */
     width: 100%;
     margin: 0;
     padding: 0;
@@ -22,6 +23,10 @@ body {
     align-items: center;
     position: relative;
     color: var(--text-color);
+    /* iOS-specific fixes */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+    touch-action: none;
 }
 
 /* CANVAS */
@@ -780,11 +785,15 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    /* iOS viewport height fix */
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for iOS */
     background: linear-gradient(180deg, var(--bg-1, #0d001a) 0%, var(--bg-2, #1a0520) 100%);
     z-index: 2000;
     display: none;
     flex-direction: column;
     align-items: center;
+    overflow: hidden; /* Prevent scrolling */
 }
 
 .game-overlay.active {
@@ -938,24 +947,64 @@ body {
     z-index: 2010;
     touch-action: none;
     transition: transform 0.3s ease;
+    /* iOS-specific fixes */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* iOS Safari bottom bar fix */
+@supports (-webkit-touch-callout: none) {
+    #game-canvas {
+        /* Use dynamic viewport height on iOS */
+        max-height: calc(100dvh - 80px); /* Account for HUD */
+    }
 }
 
 /* Touch Area Mode - Adjust height and position, leave bottom for touch */
 .game-overlay.touch-area-mode #game-canvas {
     height: 85vh;
+    height: 85dvh; /* Dynamic viewport for iOS */
     max-height: 85vh;
+    max-height: 85dvh;
 }
 
 .game-overlay.touch-area-mode .game-characters {
     /* Height set by JavaScript for accurate positioning */
+    height: 85vh;
 }
 
 .game-overlay.touch-area-mode .burak-char {
     /* Position set by JavaScript for accurate positioning */
+    bottom: 10px;
 }
 
 .game-overlay.touch-area-mode .game-wave-banner {
     top: 45%;
+}
+
+/* Mobile touch improvements - make entire game area touchable */
+@media (max-width: 768px) {
+    #game-canvas {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    .game-overlay {
+        touch-action: none;
+    }
+    
+    /* Ensure character is visible and positioned correctly on mobile */
+    .burak-char {
+        bottom: 20px;
+        z-index: 10;
+    }
+    
+    .berna-char {
+        top: 20px;
+        z-index: 10;
+    }
 }
 
 /* Screen shake on damage */
@@ -1168,7 +1217,8 @@ body {
     pointer-events: none;
     /* Let clicks pass through to canvas */
     z-index: 5;
-    overflow: hidden;
+    overflow: visible; /* Changed from hidden to visible */
+    display: none; /* Hidden by default, shown by JavaScript */
 }
 
 .game-char {
@@ -1182,16 +1232,19 @@ body {
     /* Hint browser for optimization */
     filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
     /* CSS shadow is faster than Canvas shadow */
+    display: none; /* Hidden by default, shown by JavaScript */
 }
 
 .berna-char {
     top: 20px;
     bottom: auto;
+    left: 50%; /* Center by default */
 }
 
 .burak-char {
     bottom: 20px;
     top: auto;
+    left: 50%; /* Center by default */
 }
 
 /* Ensure canvas is below characters but above background */
