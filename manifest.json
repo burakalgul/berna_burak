@@ -2,7 +2,7 @@
   "name": "Berna & Burak - Sevgililer Günü Oyunu",
   "short_name": "Berna & Burak",
   "description": "Romantik kalp yakalama oyunu - Berna ve Burak'ın aşk hikayesi",
-  "start_url": "/",
+  "start_url": "./",
   "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#1a0b1c",
@@ -18,6 +18,6 @@
   "categories": ["games", "entertainment"],
   "lang": "tr",
   "dir": "ltr",
-  "scope": "/",
+  "scope": "./",
   "prefer_related_applications": false
 }
