@@ -3173,12 +3173,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Define burakTop early for use in boss abilities
         let burakTop = gameH - BURAK_SPRITE_SIZE / 2;
         
-        // In touch area mode, the GIF is positioned lower than the canvas coordinate
-        // Canvas: 85vh, GIF visual position: ~87vh (100vh container - 13vh margin)
-        // Offset halos downward to match GIF visual position
-        const isTouchAreaMode = gameOverlay.classList.contains('touch-area-mode');
-        let burakVisualOffset = isTouchAreaMode ? gameH * 0.15 : 0;
-
         // ============================================
         // FINAL BOSS PHASE 3: PLATFORM CLIMBING
         // ============================================

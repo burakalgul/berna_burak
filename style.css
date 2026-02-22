@@ -952,8 +952,8 @@ body {
 }
 
 .game-overlay.touch-area-mode .burak-char {
-    bottom: 0px;
-    margin-bottom: 2vh;
+    bottom: 15vh !important;
+    margin-bottom: 0 !important;
 }
 
 .game-overlay.touch-area-mode .game-wave-banner {
