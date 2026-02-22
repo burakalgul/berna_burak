@@ -35,8 +35,14 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  // Skip non-http(s) requests (chrome-extension, etc.)
-  if (!event.request.url.startsWith('http')) {
+  // Skip non-http(s) requests (chrome-extension, data:, blob:, etc.)
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+  
+  // Skip chrome extension requests
+  if (event.request.url.includes('chrome-extension://')) {
     return;
   }
   
@@ -57,20 +63,33 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
           
+          // Skip caching for non-http(s) responses
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return response;
+          }
+          
           // Clone the response
           const responseToCache = response.clone();
           
           caches.open(CACHE_NAME)
             .then((cache) => {
-              cache.put(event.request, responseToCache);
+              // Only cache http(s) requests
+              if (event.request.url.startsWith('http')) {
+                cache.put(event.request, responseToCache).catch(err => {
+                  console.log('Cache put failed:', err);
+                });
+              }
             });
           
           return response;
         }).catch((error) => {
           // Network request failed, return a fallback if available
-          console.log('Fetch failed:', error);
+          console.log('Fetch failed for:', event.request.url);
           return caches.match('./index.html');
         });
+      }).catch((error) => {
+        console.log('Cache match failed:', error);
+        return fetch(event.request);
       })
   );
 });
