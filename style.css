@@ -956,25 +956,6 @@ body {
     margin-bottom: 13vh;
 }
 
-.game-overlay.touch-area-mode .berna-char {
-    /* Boss position handled by JavaScript transform */
-}
-
-.game-overlay.touch-area-mode .game-hud {
-    /* HUD stays at top in touch area mode */
-}
-
-@media (max-width: 768px) {
-    .game-overlay.touch-area-mode .game-hud {
-        /* HUD stays full width at top in touch area mode */
-    }
-}
-
-.game-overlay.touch-area-mode .game-close-btn,
-.game-overlay.touch-area-mode .game-pause-btn {
-    /* Buttons stay in HUD in touch area mode */
-}
-
 .game-overlay.touch-area-mode .game-wave-banner {
     top: 45%;
 }
