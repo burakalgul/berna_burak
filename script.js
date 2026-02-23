@@ -2411,10 +2411,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             name: "Fırtınalı Gün 🌪️",
-            scoreTarget: 1100, // Reduced from 1500
+            scoreTarget: 1000, // Reduced from 1100 (nerf)
             spawnRate: 0.04,
-            speedMul: 1.3, // Reduced from 1.4
-            brokenWeight: 20,
+            speedMul: 1.25, // Reduced from 1.3 (nerf)
+            brokenWeight: 18, // Reduced from 20 (nerf)
             boss: {
                 emoji: '🌪️',
                 color: '#94a3b8',
@@ -2563,10 +2563,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             name: "Kara Sevda 💔",
-            scoreTarget: 4000, // Changed from Infinity to 4000
-            spawnRate: 0.065, // Reduced from 0.08
-            speedMul: 1.8, // Reduced from 2.2
-            brokenWeight: 35, // Reduced from 60
+            scoreTarget: 3500, // Reduced from 4000 (nerf)
+            spawnRate: 0.06, // Reduced from 0.065 (nerf)
+            speedMul: 1.7, // Reduced from 1.8 (nerf)
+            brokenWeight: 32, // Reduced from 35 (nerf)
             boss: {
                 emoji: '💔',
                 color: '#000000',

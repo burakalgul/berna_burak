@@ -377,10 +377,10 @@ class BossController {
     }
 
     applyWindPhysics(hearts, gameTime) {
-        const windStrength = Math.sin(gameTime * 2) * 5;
+        const windStrength = Math.sin(gameTime * 2) * 4; // Reduced from 5 to 4 (nerf)
         this.windDirection = Math.sign(windStrength) || 1;
         hearts.forEach(heart => {
-            heart.vx += windStrength * 0.05;
+            heart.vx += windStrength * 0.04; // Reduced from 0.05 to 0.04 (nerf)
         });
     }
 
