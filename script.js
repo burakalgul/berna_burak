@@ -5139,13 +5139,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // During boss fight: Much rarer special heart spawns
             if (bossActive && bossIntroTimer <= 0 && bossDefeatedTimer <= 0) {
                 // Special hearts are rare - only 30% of normal spawn rate (increased from 20%)
-                // AND have a 2 second cooldown to prevent multiple spawns
+                // AND have a RANDOM cooldown (2-4 seconds) to prevent multiple spawns
                 const now = Date.now();
-                if (now - bernaLastSpecialHeartTime >= 2000) { // 2 second cooldown
+                const cooldownTime = 2000 + Math.random() * 2000; // Random 2-4 seconds
+                if (now - bernaLastSpecialHeartTime >= cooldownTime) {
                     spawnChance = config.spawnRate * 0.3;
                     shouldSpawn = Math.random() < spawnChance;
                     if (shouldSpawn) {
                         bernaLastSpecialHeartTime = now;
+                        
+                        // Check if there's already a special heart on screen
+                        const hasSpecialHeart = fallingHearts.some(h => h.type && h.type.isBossWeakness);
+                        if (hasSpecialHeart) {
+                            shouldSpawn = false; // Don't spawn if one already exists
+                        }
                     }
                 }
             } else {
