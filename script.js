@@ -4001,8 +4001,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     bossController.updateLavaBombs(dt, fallingHearts, bossX, renderBossY, gameW, gameH);
                     
-                    // Also spawn broken hearts
-                    attackChance *= 1.2; // Reduced from 1.5
+                    // Also spawn broken hearts (BUFFED for waves 1-16)
+                    attackChance *= 1.5; // Increased from 1.2
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 100,
@@ -4051,8 +4051,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     bossController.applyWindPhysics(fallingHearts, gameTime);
                     
-                    // Also spawn broken hearts with wind effect
-                    attackChance *= 1.1; // Reduced from 1.3
+                    // Also spawn broken hearts with wind effect (BUFFED for waves 1-16)
+                    attackChance *= 1.4; // Increased from 1.1
                     if (Math.random() < attackChance) {
                         const windStrength = Math.sin(gameTime * 2) * 3;
                         fallingHearts.push({
@@ -4093,8 +4093,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(gameW / 2, gameH / 2, '🌫️ SİS GELDİ!', true);
                     }
                     
-                    // Spawn broken hearts (harder to see)
-                    attackChance *= 1.2; // Reduced from 1.4
+                    // Spawn broken hearts (harder to see) (BUFFED for waves 1-16)
+                    attackChance *= 1.5; // Increased from 1.2
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 120,
@@ -4149,8 +4149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(gameW / 2, gameH / 2, '⚠️ GLITCH!', true);
                     }
                     
-                    // Spawn GLITCH hearts (teleporting hearts)
-                    attackChance *= 1.2; // Reduced from 1.4
+                    // Spawn GLITCH hearts (teleporting hearts) (BUFFED for waves 1-16)
+                    attackChance *= 1.5; // Increased from 1.2
                     if (Math.random() < attackChance) {
                         fallingHearts.push({
                             x: bossX + (Math.random() - 0.5) * 100,
@@ -4187,8 +4187,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const timeScale = bossController.getTimeScale();
                     
-                    // Spawn CLOCK hearts (speed changes randomly)
-                    attackChance *= 1.1; // Reduced from 1.3
+                    // Spawn CLOCK hearts (speed changes randomly) (BUFFED for waves 1-16)
+                    attackChance *= 1.4; // Increased from 1.1
                     if (Math.random() < attackChance) {
                         const randomSpeed = timeScale * (Math.random() < 0.5 ? 0.5 : 3.0); // Very slow or very fast
                         fallingHearts.push({
@@ -4224,8 +4224,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(gameW / 2, gameH / 2, '⬜ RENKLER KAYBOLDU!', true);
                     }
                     
-                    // Spawn GRAY hearts (all look the same - hard to distinguish)
-                    attackChance *= 0.9; // Further reduced from 1.2 to make it easier
+                    // Spawn GRAY hearts (all look the same - hard to distinguish) (BUFFED for waves 1-16)
+                    attackChance *= 1.2; // Increased from 0.9
                     if (Math.random() < attackChance) {
                         const heartTypes = ['⚫', '⚪', '🖤', '🤍', '◼️', '◻️'];
                         const randomHeart = heartTypes[Math.floor(Math.random() * heartTypes.length)];
@@ -4249,11 +4249,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         addCatchEffect(gameW / 2, gameH / 2, '💀 FİNAL BOSS!', true);
                     }
                     
-                    // Phase 1: SHADOW WAVE - Dark hearts with wind
+                    // Phase 1: SHADOW WAVE - Dark hearts with wind (BUFFED for waves 1-16)
                     if (bossPhase === 1) {
                         bossController.applyWindPhysics(fallingHearts, gameTime);
                         
-                        attackChance *= 1.5; // Reduced from 1.8
+                        attackChance *= 1.8; // Increased from 1.5
                         if (Math.random() < attackChance) {
                             const windStrength = Math.sin(gameTime * 2) * 3;
                             fallingHearts.push({
@@ -4283,13 +4283,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                         }
                     }
-                    // Phase 2: NIGHTMARE FOG - Invisible hearts
+                    // Phase 2: NIGHTMARE FOG - Invisible hearts (BUFFED for waves 1-16)
                     else if (bossPhase === 2) {
                         if (!bossController.fogActive) {
                             bossController.enableFogForgetting();
                         }
                         
-                        attackChance *= 1.6; // Reduced from 2.0
+                        attackChance *= 2.0; // Increased from 1.6
                         if (Math.random() < attackChance) {
                             fallingHearts.push({
                                 x: bossX + (Math.random() - 0.5) * 100,
@@ -4392,11 +4392,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     fallingHearts.forEach(h => h.vx += windPower * 0.02);
                     
                 } else if (ability === 'angry') {
-                    // Wave 15: Angry - Rage mode with lightning bursts (OPTIMIZED)
-                    attackChance *= 0.75; // Halved from 1.5 for better balance
-                    const isRage = Math.random() < 0.004; // Halved from 0.008
+                    // Wave 15: Angry - Rage mode with lightning bursts (BUFFED for waves 1-16)
+                    attackChance *= 1.0; // Increased from 0.75
+                    const isRage = Math.random() < 0.006; // Increased from 0.004
                     if (Math.random() < attackChance || isRage) {
-                        const count = isRage ? 2 : 1; // Halved from 4 and 2
+                        const count = isRage ? 3 : 2; // Increased from 2:1
                         for (let i = 0; i < count; i++) {
                             fallingHearts.push({
                                 x: bossX + (Math.random() - 0.5) * 150,
