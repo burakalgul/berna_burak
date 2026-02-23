@@ -1637,6 +1637,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let damageFlash = 0;
     let invulnerableTimer = 0; // NEW: Invulnerability timer
     let bernaAngryTimer = 0; // Berna anger timer for broken heart reaction
+    
+    // --- CHECKPOINT SYSTEM ---
+    let checkpointUsed = false; // Has the player used their checkpoint continue?
+    let lastCheckpoint = 1; // Last checkpoint wave (6, 12, 18)
+    const CHECKPOINTS = [6, 12, 18]; // Checkpoint waves
 
     // --- PERFORMANCE OPTIMIZATION ---
     const MAX_HEARTS = 50; // Maximum hearts on screen
@@ -3816,6 +3821,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentWave++;
                         waveScoreEarned = 0;
                         if (gameWaveEl) gameWaveEl.textContent = currentWave;
+                        
+                        // Update checkpoint if reached
+                        if (CHECKPOINTS.includes(currentWave)) {
+                            lastCheckpoint = currentWave;
+                            console.log(`✅ Checkpoint kaydedildi: Seviye ${currentWave}`);
+                            // Show checkpoint notification
+                            addCatchEffect(gameW / 2, gameH / 2, `💾 CHECKPOINT! Seviye ${currentWave}`, true);
+                        }
+                        
                         const newConfig = getCurrentWaveConfig();
                         showWaveBanner(newConfig.name, newConfig.desc);
                         updateWaveColors();
@@ -7030,6 +7044,10 @@ document.addEventListener('DOMContentLoaded', () => {
         slowMoActive = false;
         bernaX = 0;
         bernaDir = 1;
+        
+        // Reset checkpoint system
+        checkpointUsed = false;
+        lastCheckpoint = 1;
 
         // Reset Stats
         totalHeartsCaught = 0;
@@ -7116,7 +7134,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function endGame() {
-        console.log("endGame called, score:", gameScore);
+        console.log("endGame called, score:", gameScore, "wave:", currentWave, "checkpoint:", lastCheckpoint);
+        
+        // Check if player can use checkpoint
+        const canUseCheckpoint = !checkpointUsed && lastCheckpoint > 1 && currentWave >= 6;
+        
+        if (canUseCheckpoint) {
+            // Show checkpoint continue option
+            showCheckpointContinue();
+            return;
+        }
+        
+        // Normal game over
         gameActive = false;
         cancelAnimationFrame(gameAnimFrame);
         
@@ -7196,6 +7225,171 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (gameOverScreen) gameOverScreen.classList.add('active');
+    }
+    
+    // Checkpoint Continue Screen
+    function showCheckpointContinue() {
+        gameActive = false;
+        cancelAnimationFrame(gameAnimFrame);
+        
+        // Create checkpoint modal
+        const checkpointModal = document.createElement('div');
+        checkpointModal.id = 'checkpoint-modal';
+        checkpointModal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        checkpointModal.innerHTML = `
+            <div style="text-align: center; padding: 40px; max-width: 500px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">💾</div>
+                <h2 style="color: #ff4d6d; font-size: 2rem; margin-bottom: 20px;">CHECKPOINT!</h2>
+                <p style="color: #fff; font-size: 1.2rem; margin-bottom: 30px;">
+                    Seviye ${lastCheckpoint}'den devam etmek ister misiniz?<br>
+                    <span style="color: #ffd700; font-size: 0.9rem;">(Bu hakkı sadece 1 kere kullanabilirsiniz)</span>
+                </p>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <button id="checkpoint-continue" style="
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        padding: 15px 40px;
+                        font-size: 1.2rem;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-family: 'Montserrat', sans-serif;
+                        font-weight: bold;
+                        transition: transform 0.2s;
+                    ">
+                        ✅ Devam Et
+                    </button>
+                    <button id="checkpoint-decline" style="
+                        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        color: white;
+                        border: none;
+                        padding: 15px 40px;
+                        font-size: 1.2rem;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-family: 'Montserrat', sans-serif;
+                        font-weight: bold;
+                        transition: transform 0.2s;
+                    ">
+                        ❌ Vazgeç
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(checkpointModal);
+        
+        // Continue button
+        document.getElementById('checkpoint-continue').addEventListener('click', () => {
+            checkpointUsed = true;
+            document.body.removeChild(checkpointModal);
+            continueFromCheckpoint();
+        });
+        
+        // Decline button
+        document.getElementById('checkpoint-decline').addEventListener('click', () => {
+            document.body.removeChild(checkpointModal);
+            // Show normal game over
+            gameActive = false;
+            cancelAnimationFrame(gameAnimFrame);
+            
+            // Stop game music
+            stopGameMusic();
+            if (bgMusic && settings.music && state !== 'MAIN') {
+                bgMusic.currentTime = 0;
+                bgMusic.play().catch(e => console.log("Audio prevented"));
+                isMusicPlaying = true;
+            }
+            
+            // Show game over screen
+            const currentHigh = parseInt(localStorage.getItem('bernaGameHighScore') || '0');
+            if (gameScore > currentHigh) {
+                localStorage.setItem('bernaGameHighScore', gameScore);
+                if (gameHighscoreText) gameHighscoreText.textContent = "🏆 YENİ REKOR!";
+                playSound('levelup');
+            } else {
+                if (gameHighscoreText) gameHighscoreText.textContent = `En Yüksek: ${currentHigh}`;
+            }
+            
+            if (statHeartsEl) statHeartsEl.textContent = totalHeartsCaught;
+            if (statComboEl) statComboEl.textContent = longestCombo;
+            if (statTimeEl) statTimeEl.textContent = Math.floor(gameTime) + 's';
+            if (statBossesEl) statBossesEl.textContent = bossesDefeated;
+            if (finalScoreEl) finalScoreEl.textContent = gameScore;
+            if (finalWaveEl) finalWaveEl.textContent = currentWave;
+            if (gameOverMsgEl) gameOverMsgEl.textContent = GAME_OVER_MESSAGES[Math.floor(Math.random() * GAME_OVER_MESSAGES.length)];
+            if (gameOverScreen) gameOverScreen.classList.add('active');
+        });
+    }
+    
+    // Continue from checkpoint
+    function continueFromCheckpoint() {
+        console.log(`🔄 Checkpoint'ten devam ediliyor: Seviye ${lastCheckpoint}`);
+        
+        // Reset game state
+        currentWave = lastCheckpoint;
+        waveScoreEarned = 0;
+        gameLives = 5;
+        maxLives = 5;
+        gameCombo = 1;
+        gameConsecutiveCatches = 0;
+        fallingHearts = [];
+        catchEffects = [];
+        gamePowerUps = [];
+        bossActive = false;
+        bossWarningShown = false;
+        waveTransitioning = false;
+        
+        // Reset power-ups
+        shieldActive = false;
+        shieldTimer = 0;
+        magnetActive = false;
+        magnetTimer = 0;
+        slowMoActive = false;
+        slowMoTimer = 0;
+        loveBlastActive = false;
+        loveBlastTimer = 0;
+        lightningActive = false;
+        doublePointsActive = false;
+        doublePointsTimer = 0;
+        precisionActive = false;
+        precisionTimer = 0;
+        streakProtectActive = false;
+        streakProtectTimer = 0;
+        
+        // Reset boss controller
+        if (bossController) {
+            bossController.reset();
+        }
+        
+        // Update UI
+        if (gameWaveEl) gameWaveEl.textContent = currentWave;
+        if (gameLivesEl) gameLivesEl.textContent = gameLives;
+        updateLivesDisplay();
+        
+        // Show checkpoint message
+        addCatchEffect(gameW / 2, gameH / 2, `💾 Seviye ${lastCheckpoint}'den başlıyorsunuz!`, true);
+        showWaveBanner(WAVES[currentWave - 1].name, WAVES[currentWave - 1].desc);
+        updateWaveColors();
+        
+        // Restart game
+        gameActive = true;
+        const currentSession = ++gameSessionId;
+        cancelAnimationFrame(gameAnimFrame);
+        gameLoop(currentSession);
     }
 
     // Victory Screen Functions (Global scope for dev commands)
