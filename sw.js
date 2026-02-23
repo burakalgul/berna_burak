@@ -6,7 +6,7 @@ const urlsToCache = [
   './style.css',
   './script.js',
   './favicon.svg',
-  './berna.gif',
+  './berna_2.gif',
   './burak.gif',
   './dilerimki.mp3',
   './achievements.js',

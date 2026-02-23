@@ -1303,7 +1303,7 @@ body {
 .game-char {
     position: absolute;
     bottom: 20px;
-    width: 100px;
+    width: 110px; /* Increased from 100px for better visibility */
     /* Default size, JS will control */
     height: auto;
     object-fit: contain;
@@ -1318,12 +1318,14 @@ body {
     top: 20px;
     bottom: auto;
     left: 50%; /* Center by default */
+    width: 110px; /* Specific size for berna_2.gif */
 }
 
 .burak-char {
     bottom: 20px;
     top: auto;
     left: 50%; /* Center by default */
+    width: 120px; /* Specific size for burak.gif */
 }
 
 /* Ensure canvas is below characters but above background */
