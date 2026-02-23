@@ -5254,19 +5254,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Max HP Cooldown: Don't spawn if cooldown active
                     if (pu.type === 'maxhp') {
                         const timeSinceLastMaxHP = gameTime - lastMaxHPSpawn;
-                        if (timeSinceLastMaxHP < 30) return false; // 30 second cooldown
+                        if (timeSinceLastMaxHP < 25) return false; // 25 second cooldown (reduced from 30)
                     }
                     
                     return true;
                 });
                 
-                // Reduce max HP spawn chance (make it 4x rarer)
+                // Reduce max HP spawn chance (make it 3x rarer instead of 4x)
                 if (availablePowerUps.length > 0) {
                     let selectedPU;
                     
-                    // 75% chance to filter out maxhp if it's in the list
+                    // 65% chance to filter out maxhp if it's in the list (reduced from 75%)
                     const hasMaxHP = availablePowerUps.some(pu => pu.type === 'maxhp');
-                    if (hasMaxHP && Math.random() < 0.75) {
+                    if (hasMaxHP && Math.random() < 0.65) {
                         // Filter out maxhp for this spawn
                         const filteredPowerUps = availablePowerUps.filter(pu => pu.type !== 'maxhp');
                         if (filteredPowerUps.length > 0) {
