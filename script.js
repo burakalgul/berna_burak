@@ -3075,12 +3075,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Boss Dialogue System
     // ----------------------------
     function checkWaveProgress() {
-        // Don't check progress if game is completed (final wave)
-        if (currentWave >= WAVES.length && bossActive === false) {
-            return; // Game is completed, don't spawn any more bosses
-        }
+        // Don't spawn boss if game is not active
+        if (!gameActive) return;
         
         const config = getCurrentWaveConfig();
+        
         // Boss warning at 80% progress
         if (waveScoreEarned >= config.scoreTarget * 0.8 && !bossWarningShown && !bossActive) {
             bossWarningShown = true;
