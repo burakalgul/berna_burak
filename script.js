@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         2: 'image/boss/2.webp',
         3: 'image/boss/3.webp',
         4: 'image/boss/4.webp',
-        5: 'image/boss/5.webp',
+        5: 'image/boss/5_2.webp',
         6: 'image/boss/6.webp',
         // 7: Skip - no changes for boss 7
         8: 'image/boss/8.webp',
@@ -113,6 +113,41 @@ document.addEventListener('DOMContentLoaded', () => {
         22: 'image/boss/22.webp'
     };
     
+    // Object Images (Hearts, Power-ups, etc.)
+    const objectImages = {};
+    const objectImagePaths = {
+        // Normal Hearts
+        '❤️': 'image/obje/cekirdek.webp',
+        '💖': 'image/obje/saf_enerji.webp',
+        '💎': 'image/obje/kristal.webp',
+        '💔': 'image/obje/kirik_kalp.webp',
+        '🥇': 'image/obje/altin_oz.webp',
+        '🧊': 'image/obje/bozulmus_parca.webp',
+        '💗': 'image/obje/enerji_kutlesi.webp',
+        '🏩': 'image/obje/can.webp',
+        // Power-ups
+        '🛡️': 'image/obje/kalkan.webp',
+        '🧲': 'image/obje/cekim.webp',
+        '⏳': 'image/obje/zaman_durdurma.webp',
+        '🌈': 'image/obje/duygu.webp',
+        '⚡': 'image/obje/enerji_darbe.webp',
+        '💫': 'image/obje/senktron.webp',
+        '🎯': 'image/obje/hedef.webp',
+        '🔥': 'image/obje/stabilizor.webp',
+        'maxhp_special': 'image/obje/kalici_yasam.webp', // Special key for maxhp power-up
+        // Boss Attack Hearts
+        '⚫': 'image/obje/karanlik_cekirdek.webp',
+        '⚪': 'image/obje/asiri_aydinlik_cekirdek.webp',
+        '🖤': 'image/obje/bozulmus_cekirdek.webp',
+        '🤍': 'image/obje/parazit_blok.webp',
+        '◼️': 'image/obje/bozulmus_isik_blok.webp',
+        '◻️': 'image/obje/yok_edici_parca.webp',
+        // Boss Special Objects
+        '🐍': 'image/obje/zehir.webp',
+        '👾': 'image/obje/glitch.webp'
+        // Note: Lav bombası (🔥) için ayrı render sistemi var (boss-mechanics.js)
+    };
+    
     // Preload boss images
     function preloadBossImages() {
         Object.keys(bossImagePaths).forEach(waveNum => {
@@ -128,8 +163,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Preload object images
+    function preloadObjectImages() {
+        Object.keys(objectImagePaths).forEach(emoji => {
+            const img = new Image();
+            img.src = objectImagePaths[emoji];
+            img.onload = () => {
+                objectImages[emoji] = img;
+                console.log(`✅ Object ${emoji} image loaded`);
+            };
+            img.onerror = () => {
+                console.warn(`⚠️ Object ${emoji} image failed to load, using emoji fallback`);
+            };
+        });
+    }
+    
     // Call preload on page load
     preloadBossImages();
+    preloadObjectImages();
     
     // Settings State
     let settings = {
@@ -5251,19 +5302,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Max HP Cooldown: Don't spawn if cooldown active
                     if (pu.type === 'maxhp') {
                         const timeSinceLastMaxHP = gameTime - lastMaxHPSpawn;
-                        if (timeSinceLastMaxHP < 25) return false; // 25 second cooldown (reduced from 30)
+                        if (timeSinceLastMaxHP < 15) return false; // 15 second cooldown (reduced from 25)
                     }
                     
                     return true;
                 });
                 
-                // Reduce max HP spawn chance (make it 3x rarer instead of 4x)
+                // Reduce max HP spawn chance (make it 2x rarer instead of 3x)
                 if (availablePowerUps.length > 0) {
                     let selectedPU;
                     
-                    // 65% chance to filter out maxhp if it's in the list (reduced from 75%)
+                    // 40% chance to filter out maxhp if it's in the list (reduced from 65%)
                     const hasMaxHP = availablePowerUps.some(pu => pu.type === 'maxhp');
-                    if (hasMaxHP && Math.random() < 0.65) {
+                    if (hasMaxHP && Math.random() < 0.40) {
                         // Filter out maxhp for this spawn
                         const filteredPowerUps = availablePowerUps.filter(pu => pu.type !== 'maxhp');
                         if (filteredPowerUps.length > 0) {
@@ -6184,12 +6235,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             gameCtx.translate(drawX, drawY);
             gameCtx.rotate(h.rotation);
-            gameCtx.font = `${h.type.size}px serif`;
-            gameCtx.textAlign = 'center';
-            gameCtx.textBaseline = 'middle';
-            // iOS Fix: Reset fillStyle
-            gameCtx.fillStyle = '#000000';
-            gameCtx.fillText(h.type.emoji, 0, 0);
+            
+            // Check if we have an image for this emoji
+            const objectImg = objectImages[h.type.emoji];
+            if (objectImg && objectImg.complete) {
+                // Draw image instead of emoji
+                const imgSize = h.type.size * 1.2; // Slightly larger for better visibility
+                gameCtx.drawImage(objectImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+            } else {
+                // Fallback to emoji
+                gameCtx.font = `${h.type.size}px serif`;
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#000000';
+                gameCtx.fillText(h.type.emoji, 0, 0);
+            }
+            
             gameCtx.restore();
         }
 
@@ -6232,12 +6293,29 @@ document.addEventListener('DOMContentLoaded', () => {
             gameCtx.fill();
             gameCtx.translate(pu.x, pu.y);
             gameCtx.globalAlpha = pu.glow;
-            gameCtx.font = `${pu.type.size}px serif`;
-            gameCtx.textAlign = 'center';
-            gameCtx.textBaseline = 'middle';
-            // iOS Fix: Reset fillStyle
-            gameCtx.fillStyle = '#000000';
-            gameCtx.fillText(pu.type.emoji, 0, 0);
+            
+            // Check if we have an image for this power-up
+            // Special case: maxhp uses different image than giant heart
+            let objectImg;
+            if (pu.type.type === 'maxhp') {
+                objectImg = objectImages['maxhp_special'];
+            } else {
+                objectImg = objectImages[pu.type.emoji];
+            }
+            
+            if (objectImg && objectImg.complete) {
+                // Draw image instead of emoji
+                const imgSize = pu.type.size * 1.2;
+                gameCtx.drawImage(objectImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+            } else {
+                // Fallback to emoji
+                gameCtx.font = `${pu.type.size}px serif`;
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillStyle = '#000000';
+                gameCtx.fillText(pu.type.emoji, 0, 0);
+            }
+            
             gameCtx.globalAlpha = 1;
             gameCtx.restore();
         }
