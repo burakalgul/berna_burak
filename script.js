@@ -2697,7 +2697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             name: "Sonsuzluk ♾️", 
-            scoreTarget: Infinity, 
+            scoreTarget: 7000, // Changed from Infinity to 7000
             spawnRate: 0.055, // Reduced from 0.065
             speedMul: 1.9, 
             brokenWeight: 15, // Reduced from 30
