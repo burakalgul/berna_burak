@@ -4560,11 +4560,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'diamond') {
-                    // Wave 19: Diamond - Dazzling attacks (NERFED)
-                    if (Math.random() < attackChance * 0.7) { // Reduced spawn rate by 30%
-                        // Diamond pattern - reduced from 4 to 3 hearts
+                    // Wave 19: Diamond - Dazzling attacks (FURTHER NERFED)
+                    if (Math.random() < attackChance * 0.6) { // Further reduced from 0.7
+                        // Diamond pattern - reduced to 2 hearts
                         const positions = [
-                            {x: 0, y: -60}, {x: 60, y: 0}, {x: -60, y: 0}
+                            {x: 60, y: 0}, {x: -60, y: 0}
                         ];
                         positions.forEach(pos => {
                             fallingHearts.push({
@@ -4593,20 +4593,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'wedding') {
-                    // Wave 11: Wedding - Celebration attacks
-                    if (Math.random() < attackChance * 0.9) {
-                        // Confetti pattern
-                        for (let i = 0; i < 2; i++) {
-                            fallingHearts.push({
-                                x: bossX + (Math.random() - 0.5) * 120,
-                                y: renderBossY + 40,
-                                vy: 2.5 + Math.random(),
-                                vx: (Math.random() - 0.5) * 2,
-                                type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
-                                rotation: Math.random() * Math.PI * 2,
-                                rotSpeed: 0.15
-                            });
-                        }
+                    // Wave 20: Wedding - Celebration attacks (NERFED)
+                    if (Math.random() < attackChance * 0.8) { // Reduced from 0.9
+                        // Confetti pattern - reduced to 1 heart
+                        fallingHearts.push({
+                            x: bossX + (Math.random() - 0.5) * 120,
+                            y: renderBossY + 40,
+                            vy: 2.5 + Math.random(),
+                            vx: (Math.random() - 0.5) * 2,
+                            type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: 0.15
+                        });
                     }
                     // Confetti particles
                     if (gameFrameCount % 10 === 0) {
@@ -4624,11 +4622,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'eternal') {
-                    // Wave 22: Eternal - Cosmic chaos (ULTRA NERFED)
-                    attackChance *= 0.9; // Further reduced from 1.2
-                    const isCosmic = Math.random() < 0.004; // Further reduced from 0.006
+                    // Wave 22: Eternal - Cosmic chaos (ULTRA NERFED v2)
+                    attackChance *= 0.8; // Further reduced from 0.9
+                    const isCosmic = Math.random() < 0.003; // Further reduced from 0.004
                     if (Math.random() < attackChance || isCosmic) {
-                        const count = isCosmic ? 4 : 1; // Further reduced from 6:2
+                        const count = isCosmic ? 3 : 1; // Further reduced from 4:1
                         for (let i = 0; i < count; i++) {
                             const angle = (Math.PI * 2 / count) * i + gameTime;
                             const radius = isCosmic ? 150 : 80;
