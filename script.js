@@ -5200,7 +5200,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     fallingHearts.push({
                         x: bernaX + (Math.random() - 0.5) * 40,
-                        y: bernaYBase + BERNA_SPRITE_SIZE,
+                        y: bernaYBase + BERNA_SPRITE_SIZE / 2, // Spawn from Berna's center (was bottom)
                         vy: type.speed * Math.min(speedMul, 1.2) * (0.8 + Math.random() * 0.4),
                         vx: (Math.random() - 0.5) * 0.8,
                         type: type,
