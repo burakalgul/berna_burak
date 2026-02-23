@@ -63,7 +63,7 @@ class BossController {
             x: x,
             y: startY,
             targetY: targetY, // Where it should land
-            vy: 8, // Fall speed
+            vy: 5, // Fall speed (reduced from 8 for slower descent)
             radius: 30, // Smaller radius for easier dodging (reduced from 35)
             lifetime: 2.0, // 2 seconds after landing (reduced from 2.5)
             createdAt: Date.now(),
@@ -73,7 +73,9 @@ class BossController {
 
     updateLavaBombs(dt, hearts, bossX, bossY, gameW, gameH) {
         // Spawn lava bombs randomly across the screen (VERY RARE - mobile friendly)
-        if (Math.random() < 0.004) { // Reduced from 0.008 to 0.004 (half again - 4x less than original)
+        // Only spawn if no lava bomb currently exists
+        const hasActiveBomb = this.lavaBombs.length > 0;
+        if (!hasActiveBomb && Math.random() < 0.004) { // Reduced from 0.008 to 0.004 (half again - 4x less than original)
             const targetX = Math.random() * gameW; // Use parameter instead of this.ctx.gameW
             const targetY = gameH - 40; // Land closer to ground (was 80, now 40 for better collision)
             this.spawnLavaBomb(targetX, bossY + 40, targetY);
