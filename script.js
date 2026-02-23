@@ -86,6 +86,51 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMusicPlaying = false;
     let lastFireworkTime = 0;
     
+    // Boss Images
+    const bossImages = {};
+    const bossImagePaths = {
+        1: 'image/boss/1.webp',
+        2: 'image/boss/2.webp',
+        3: 'image/boss/3.webp',
+        4: 'image/boss/4.webp',
+        5: 'image/boss/5.webp',
+        6: 'image/boss/6.webp',
+        // 7: Skip - no changes for boss 7
+        8: 'image/boss/8.webp',
+        9: 'image/boss/9.webp',
+        10: 'image/boss/10.webp',
+        11: 'image/boss/11.webp',
+        12: 'image/boss/12.webp',
+        13: 'image/boss/13.webp',
+        14: 'image/boss/14.webp',
+        15: 'image/boss/15.webp',
+        16: 'image/boss/16.webp',
+        17: 'image/boss/17.webp',
+        18: 'image/boss/18.webp',
+        19: 'image/boss/19.webp',
+        20: 'image/boss/20.webp',
+        21: 'image/boss/21.webp',
+        22: 'image/boss/22.webp'
+    };
+    
+    // Preload boss images
+    function preloadBossImages() {
+        Object.keys(bossImagePaths).forEach(waveNum => {
+            const img = new Image();
+            img.src = bossImagePaths[waveNum];
+            img.onload = () => {
+                bossImages[waveNum] = img;
+                console.log(`✅ Boss ${waveNum} image loaded`);
+            };
+            img.onerror = () => {
+                console.warn(`⚠️ Boss ${waveNum} image failed to load, using emoji fallback`);
+            };
+        });
+    }
+    
+    // Call preload on page load
+    preloadBossImages();
+    
     // Settings State
     let settings = {
         music: true,
@@ -3618,7 +3663,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Boss descends from above
                 const introProgress = 1 - (bossIntroTimer / 2.0);
                 // Adjust boss descent based on screen height (landscape mode fix)
-                const bossDescentTarget = gameH < 500 ? 120 : 180; // Less descent in landscape
+                // In touch area mode, move boss lower to avoid overlap with Berna
+                const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+                let bossDescentTarget;
+                if (isTouchAreaMode) {
+                    bossDescentTarget = gameH < 500 ? 180 : 240; // Lower position in touch mode
+                } else {
+                    bossDescentTarget = gameH < 500 ? 120 : 180; // Normal position
+                }
                 bossY = -100 + (bossDescentTarget * easeOutBounce(introProgress));
                 
                 // Pulsing entrance effect
@@ -3632,11 +3684,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameCtx.shadowBlur = 40;
                 gameCtx.shadowColor = bossConfig.color;
                 
-                gameCtx.font = '85px serif';
-                gameCtx.textAlign = 'center';
-                gameCtx.textBaseline = 'middle';
-                gameCtx.fillStyle = '#000000';
-                gameCtx.fillText(bossConfig.emoji, 0, 0);
+                // Check if boss has custom image
+                const bossImage = bossImages[currentWave];
+                if (bossImage && bossImage.complete) {
+                    // Draw boss image maintaining aspect ratio
+                    const maxSize = 180; // Maximum dimension
+                    const aspectRatio = bossImage.width / bossImage.height;
+                    let drawWidth, drawHeight;
+                    
+                    if (aspectRatio > 1) {
+                        // Wider than tall
+                        drawWidth = maxSize;
+                        drawHeight = maxSize / aspectRatio;
+                    } else {
+                        // Taller than wide or square
+                        drawHeight = maxSize;
+                        drawWidth = maxSize * aspectRatio;
+                    }
+                    
+                    gameCtx.drawImage(bossImage, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+                } else {
+                    // Fallback to emoji
+                    gameCtx.font = '85px serif';
+                    gameCtx.textAlign = 'center';
+                    gameCtx.textBaseline = 'middle';
+                    gameCtx.fillStyle = '#000000';
+                    gameCtx.fillText(bossConfig.emoji, 0, 0);
+                }
                 
                 gameCtx.restore();
                 
@@ -3662,49 +3736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (bossDefeatedTimer > 0) {
                 bossDefeatedTimer -= dt;
                 
-                const deathProgress = 1 - (bossDefeatedTimer / 3.0);
-                
-                // Boss explodes and fades
-                const scale = 1 + (deathProgress * 2);
-                const alpha = 1 - deathProgress;
-                const rotation = deathProgress * Math.PI * 4;
-                
-                gameCtx.save();
-                gameCtx.translate(bossX, bossY);
-                gameCtx.rotate(rotation);
-                gameCtx.scale(scale, scale);
-                gameCtx.globalAlpha = alpha;
-                
-                gameCtx.shadowBlur = 50 * (1 - deathProgress);
-                gameCtx.shadowColor = bossConfig.color;
-                
-                gameCtx.font = '85px serif';
-                gameCtx.textAlign = 'center';
-                gameCtx.textBaseline = 'middle';
-                gameCtx.fillStyle = '#000000';
-                gameCtx.fillText(bossConfig.emoji, 0, 0);
-                
-                gameCtx.restore();
-                
-                // Continuous particle explosion (reduced for performance)
-                if (gameFrameCount % 4 === 0) { // Changed from % 2 to % 4
-                    const particleCount = isMobile ? 2 : 3; // Reduced from 5
-                    for (let i = 0; i < particleCount; i++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const force = 5 + Math.random() * 10;
-                        catchEffects.push({
-                            x: bossX,
-                            y: bossY,
-                            vx: Math.cos(angle) * force,
-                            vy: Math.sin(angle) * force,
-                            life: 1.5,
-                            color: ['#ffd700', '#ff69b4', '#00ffff', '#ff4444', '#00ff00'][Math.floor(Math.random() * 5)],
-                            size: 3 + Math.random() * 3
-                        });
-                    }
-                }
-                
-                // When animation ends, advance wave
+                // When animation ends, advance wave FIRST before rendering
                 if (bossDefeatedTimer <= 0) {
                     bossActive = false;
                     bossWarningShown = false;
@@ -3746,6 +3778,73 @@ document.addEventListener('DOMContentLoaded', () => {
                         rotation: 0,
                         rotSpeed: 0.05
                     });
+                    
+                    // Skip rendering this frame
+                    return;
+                }
+                
+                const deathProgress = 1 - (bossDefeatedTimer / 3.0);
+                
+                // Boss explodes and fades (reduced scale for smoother animation)
+                const scale = 1 + (deathProgress * 0.5); // Reduced from 2 to 0.5
+                const alpha = 1 - deathProgress;
+                const rotation = deathProgress * Math.PI * 2; // Reduced from 4 to 2
+                
+                gameCtx.save();
+                gameCtx.translate(bossX, bossY);
+                gameCtx.rotate(rotation);
+                gameCtx.scale(scale, scale);
+                gameCtx.globalAlpha = alpha;
+                
+                gameCtx.shadowBlur = 50 * (1 - deathProgress);
+                gameCtx.shadowColor = bossConfig.color;
+                
+                // Check if boss has custom image
+                const bossImage = bossImages[currentWave];
+                if (bossImage && bossImage.complete) {
+                    // Draw boss image maintaining aspect ratio
+                    const maxSize = 180; // Maximum dimension
+                    const aspectRatio = bossImage.width / bossImage.height;
+                    let drawWidth, drawHeight;
+                    
+                    if (aspectRatio > 1) {
+                        // Wider than tall
+                        drawWidth = maxSize;
+                        drawHeight = maxSize / aspectRatio;
+                    } else {
+                        // Taller than wide or square
+                        drawHeight = maxSize;
+                        drawWidth = maxSize * aspectRatio;
+                    }
+                    
+                    gameCtx.drawImage(bossImage, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+                } else {
+                    // Fallback to emoji
+                    gameCtx.font = '85px serif';
+                    gameCtx.textAlign = 'center';
+                    gameCtx.textBaseline = 'middle';
+                    gameCtx.fillStyle = '#000000';
+                    gameCtx.fillText(bossConfig.emoji, 0, 0);
+                }
+                
+                gameCtx.restore();
+                
+                // Continuous particle explosion (reduced for performance)
+                if (gameFrameCount % 4 === 0) { // Changed from % 2 to % 4
+                    const particleCount = isMobile ? 2 : 3; // Reduced from 5
+                    for (let i = 0; i < particleCount; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const force = 5 + Math.random() * 10;
+                        catchEffects.push({
+                            x: bossX,
+                            y: bossY,
+                            vx: Math.cos(angle) * force,
+                            vy: Math.sin(angle) * force,
+                            life: 1.5,
+                            color: ['#ffd700', '#ff69b4', '#00ffff', '#ff4444', '#00ff00'][Math.floor(Math.random() * 5)],
+                            size: 3 + Math.random() * 3
+                        });
+                    }
                 }
             }
             // Active Boss Fight
@@ -3779,9 +3878,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Only moves horizontally and bobs vertically
                 
                 // Knockback when hit (handled in damageBoss)
-                // Stay within bounds - adjusted for landscape mode
-                const minBossY = gameH < 500 ? 60 : 80;
-                const maxBossY = gameH < 500 ? gameH * 0.5 : gameH * 0.7;
+                // Stay within bounds - adjusted for landscape mode and touch area mode
+                const isTouchAreaMode = gameOverlay?.classList.contains('touch-area-mode');
+                let minBossY, maxBossY;
+                
+                if (isTouchAreaMode) {
+                    // Touch mode: boss stays lower to avoid overlap with Berna
+                    minBossY = gameH < 500 ? 120 : 140;
+                    maxBossY = gameH < 500 ? gameH * 0.6 : gameH * 0.75;
+                } else {
+                    // Normal mode
+                    minBossY = gameH < 500 ? 60 : 80;
+                    maxBossY = gameH < 500 ? gameH * 0.5 : gameH * 0.7;
+                }
+                
                 if (bossY < minBossY) bossY = minBossY;
                 if (bossY > maxBossY) bossY = maxBossY;
                 
@@ -3811,11 +3921,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const phaseScale = 1 - ((3 - bossPhase) * 0.1);
                 gameCtx.scale(phaseScale, phaseScale);
                 
-                gameCtx.font = '85px serif';
-                gameCtx.textAlign = 'center';
-                gameCtx.textBaseline = 'middle';
-                gameCtx.fillStyle = '#000000';
-                gameCtx.fillText(bossConfig.emoji, 0, 0);
+                // Check if boss has custom image
+                const bossImage = bossImages[currentWave];
+                if (bossImage && bossImage.complete) {
+                    // Draw boss image maintaining aspect ratio
+                    const maxSize = 180; // Maximum dimension
+                    const aspectRatio = bossImage.width / bossImage.height;
+                    let drawWidth, drawHeight;
+                    
+                    if (aspectRatio > 1) {
+                        // Wider than tall
+                        drawWidth = maxSize;
+                        drawHeight = maxSize / aspectRatio;
+                    } else {
+                        // Taller than wide or square
+                        drawHeight = maxSize;
+                        drawWidth = maxSize * aspectRatio;
+                    }
+                    
+                    gameCtx.drawImage(bossImage, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+                } else {
+                    // Fallback to emoji
+                    gameCtx.font = '85px serif';
+                    gameCtx.textAlign = 'center';
+                    gameCtx.textBaseline = 'middle';
+                    gameCtx.fillStyle = '#000000';
+                    gameCtx.fillText(bossConfig.emoji, 0, 0);
+                }
                 
                 gameCtx.restore();
                 
@@ -4346,19 +4478,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'demon') {
-                    // Wave 8: Demon - Hellfire and chaos
-                    attackChance *= 2.2; // Reduced from 3.0
-                    const isHellfire = Math.random() < 0.015; // Reduced from 0.02
+                    // Wave 17: Demon - Hellfire and chaos (HEAVILY NERFED v2)
+                    attackChance *= 1.0; // Further reduced from 1.4 - no multiplier
+                    const isHellfire = Math.random() < 0.005; // Further reduced from 0.008
                     if (Math.random() < attackChance || isHellfire) {
-                        const count = isHellfire ? 8 : 3;
+                        const count = isHellfire ? 4 : 1; // Further reduced from 6:2
                         for (let i = 0; i < count; i++) {
                             const angle = (Math.PI * 2 / count) * i;
                             fallingHearts.push({
                                 x: bossX + Math.cos(angle) * (isHellfire ? 120 : 60),
                                 y: renderBossY + 40,
-                                vy: 4.5 + Math.random(),
-                                vx: Math.sin(angle) * (isHellfire ? 3 : 1.5),
-                                type: { emoji: '💔', points: -1, size: 28, speed: 4.5, isBroken: true },
+                                vy: 2.8 + Math.random(), // Further reduced from 3.5
+                                vx: Math.sin(angle) * (isHellfire ? 1.5 : 0.8), // Further reduced from 2:1
+                                type: { emoji: '💔', points: -1, size: 28, speed: 2.8, isBroken: true },
                                 rotation: angle,
                                 rotSpeed: 0.2
                             });
@@ -4378,17 +4510,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     }
-                    // Teleport randomly
-                    if (Math.random() < 0.005) {
+                    // Teleport randomly - reduced frequency
+                    if (Math.random() < 0.003) { // Reduced from 0.005
                         bossX = gameW * 0.2 + Math.random() * gameW * 0.6;
                         addCatchEffect(bossX, renderBossY, '💨', false);
                     }
-                    // Chaos movement
-                    if (Math.random() < 0.02) bossDir *= -1;
-                    bossX += bossDir * 8;
+                    // Chaos movement - reduced frequency
+                    if (Math.random() < 0.015) bossDir *= -1; // Reduced from 0.02
+                    bossX += bossDir * 6; // Reduced from 8
                     
                 } else if (ability === 'rebirth') {
-                    // Wave 9: Rebirth - Butterfly transformation
+                    // Wave 18: Rebirth - Butterfly transformation
                     if (Math.random() < attackChance) {
                         // Butterflies that transform
                         fallingHearts.push({
@@ -4421,26 +4553,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'diamond') {
-                    // Wave 10: Diamond - Dazzling attacks
-                    if (Math.random() < attackChance) {
-                        // Diamond pattern
+                    // Wave 19: Diamond - Dazzling attacks (NERFED)
+                    if (Math.random() < attackChance * 0.7) { // Reduced spawn rate by 30%
+                        // Diamond pattern - reduced from 4 to 3 hearts
                         const positions = [
-                            {x: 0, y: -60}, {x: 60, y: 0}, {x: 0, y: 60}, {x: -60, y: 0}
+                            {x: 0, y: -60}, {x: 60, y: 0}, {x: -60, y: 0}
                         ];
                         positions.forEach(pos => {
                             fallingHearts.push({
                                 x: bossX + pos.x,
                                 y: renderBossY + 40 + pos.y,
-                                vy: 3.0,
-                                vx: pos.x * 0.02,
-                                type: { emoji: '💔', points: -1, size: 28, speed: 3.0, isBroken: true },
+                                vy: 2.5, // Reduced from 3.0
+                                vx: pos.x * 0.015, // Reduced from 0.02
+                                type: { emoji: '💔', points: -1, size: 28, speed: 2.5, isBroken: true },
                                 rotation: 0,
                                 rotSpeed: 0.1
                             });
                         });
                     }
-                    // Dazzle effect
-                    if (gameFrameCount % 3 === 0) {
+                    // Dazzle effect - reduced frequency
+                    if (gameFrameCount % 5 === 0) { // Reduced from % 3
                         catchEffects.push({
                             x: bossX + (Math.random() - 0.5) * 80,
                             y: renderBossY + (Math.random() - 0.5) * 80,
@@ -4485,20 +4617,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                 } else if (ability === 'eternal') {
-                    // Wave 12: Eternal - Cosmic chaos
-                    attackChance *= 2.5; // Reduced from 3.5
-                    const isCosmic = Math.random() < 0.018; // Reduced from 0.025
+                    // Wave 22: Eternal - Cosmic chaos (ULTRA NERFED)
+                    attackChance *= 0.9; // Further reduced from 1.2
+                    const isCosmic = Math.random() < 0.004; // Further reduced from 0.006
                     if (Math.random() < attackChance || isCosmic) {
-                        const count = isCosmic ? 12 : 4;
+                        const count = isCosmic ? 4 : 1; // Further reduced from 6:2
                         for (let i = 0; i < count; i++) {
                             const angle = (Math.PI * 2 / count) * i + gameTime;
                             const radius = isCosmic ? 150 : 80;
                             fallingHearts.push({
                                 x: bossX + Math.cos(angle) * radius,
                                 y: renderBossY + 40 + Math.sin(angle) * (radius * 0.5),
-                                vy: 5.0 + Math.random(),
-                                vx: Math.sin(angle) * 2,
-                                type: { emoji: '💔', points: -1, size: 28, speed: 5.0, isBroken: true },
+                                vy: 3.2 + Math.random(), // Further reduced from 4.0
+                                vx: Math.sin(angle) * 1.2, // Further reduced from 1.5
+                                type: { emoji: '💔', points: -1, size: 28, speed: 3.2, isBroken: true },
                                 rotation: angle,
                                 rotSpeed: 0.25
                             });
@@ -4520,8 +4652,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     }
-                    // Infinity movement
-                    bossX = gameW / 2 + Math.sin(gameTime * 2) * 150;
+                    // Infinity movement - reduced range
+                    bossX = gameW / 2 + Math.sin(gameTime * 2) * 120; // Reduced from 150
                     // Time distortion effect
                     if (Math.random() < 0.01) {
                         damageFlash = 0.2;
@@ -6966,8 +7098,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function showVictoryScreen() {
         console.log("showVictoryScreen called - GAME COMPLETED!");
         
-        // Show cinema overlay with countdown first
-        showCinemaVideo();
+        // First fade to black, then show cinema video with countdown
+        const cinemaOverlay = document.getElementById('cinema-overlay');
+        if (cinemaOverlay) {
+            // Show overlay and start slow fade to black
+            cinemaOverlay.classList.remove('hidden');
+            cinemaOverlay.classList.add('fade-in-slow');
+            
+            // After fade completes (2.5s), start countdown and video
+            setTimeout(() => {
+                showCinemaVideo();
+            }, 2500);
+        } else {
+            // Fallback if element not found
+            showCinemaVideo();
+        }
     }
     
     function showCinemaVideo() {
@@ -6989,17 +7134,15 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelAnimationFrame(gameAnimFrame);
         stopGameMusic();
         
+        // Remove slow fade class, add active class
+        cinemaOverlay.classList.remove('fade-in-slow');
+        cinemaOverlay.classList.add('active');
+        
         // Reset video and countdown state
         endingVideo.classList.remove('active');
         endingVideo.style.display = 'none';
         filmCountdown.classList.remove('hidden');
         filmCountdown.style.display = 'flex';
-        
-        // Show cinema overlay
-        cinemaOverlay.classList.remove('hidden');
-        setTimeout(() => {
-            cinemaOverlay.classList.add('active');
-        }, 50);
         
         // Countdown: 3, 2, 1
         let count = 3;
@@ -7060,7 +7203,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Message sequence
         const messages = [
             { text: '💖 Seni Çok Seviyorum 💖', duration: 3000 },
-            { text: '✨ İyi Ki Varsın ✨', duration: 3000 }
+            { text: '✨ İyi Ki Varsın ✨', duration: 3000 },
+            { text: '💕 Oyunu Bitirdin, Tebrikler Sevgilim! 💝', duration: 3000 }
         ];
         
         let currentIndex = 0;
@@ -7452,8 +7596,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('⚠️ Oyun başlatılmamış!');
                 return;
             }
-            if (level < 1 || level > 13) {
-                console.log('⚠️ Seviye 1-13 arasında olmalı!');
+            if (level < 1 || level > 22) {
+                console.log('⚠️ Seviye 1-22 arasında olmalı!');
                 return;
             }
             currentWave = level;
@@ -7640,7 +7784,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('dev.godmode(true/false)          - Ölümsüzlük modu (alias)');
             console.log('dev.resume()                     - Oyunu devam ettir');
             console.log('dev.nextLevel()                  - Bir sonraki seviyeye geç');
-            console.log('dev.goToLevel(1-13)              - İstediğin seviyeye git');
+            console.log('dev.goToLevel(1-22)              - İstediğin seviyeye git');
             console.log('dev.goToBoss()                   - Boss\'u direkt spawn et');
             console.log('dev.useSpecial("shield")         - Özel yetenek (TIRNAKLARİ UNUTMA!)');
             console.log('  Yetenekler: "shield", "slow", "magnet"');

@@ -3251,6 +3251,12 @@ input:checked + .toggle-slider:before {
     pointer-events: all;
 }
 
+/* Fade to black animation for game completion */
+.cinema-overlay.fade-in-slow {
+    opacity: 1;
+    transition: opacity 2.5s ease-in;
+}
+
 /* Cinema black bars (letterbox) */
 .cinema-bars {
     position: absolute;
