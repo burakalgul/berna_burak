@@ -3746,9 +3746,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         bossController.reset();
                     }
                     
-                    // Check if this was the final boss (Sonsuzluk - wave 20)
+                    // Check if this was the final boss (Sonsuzluk - wave 22)
                     if (currentWave >= WAVES.length) {
-                        // GAME COMPLETED! Show victory screen
+                        // GAME COMPLETED! Stop game and show victory screen
+                        gameActive = false;
+                        cancelAnimationFrame(gameAnimFrame);
                         setTimeout(() => {
                             showVictoryScreen();
                         }, 1000);
