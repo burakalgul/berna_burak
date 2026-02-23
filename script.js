@@ -2343,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const BURAK_SPRITE_SIZE = 120;
-    const BERNA_SPRITE_SIZE = 110; // Increased from 100 for berna_2.gif
+    const BERNA_SPRITE_SIZE = 80; // Reduced from 110 - berna_2.gif is larger, scale it down
     const BURAK_CATCH_W = 100;
 
     // ---- WAVE SYSTEM (Relationship stages) - EXPANDED WITH UNIQUE BOSSES ----
