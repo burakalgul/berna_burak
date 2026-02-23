@@ -6773,12 +6773,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameCtx.strokeRect(x, y, boxSize, boxSize);
                 gameCtx.shadowBlur = 0;
                 
-                // Emoji
-                gameCtx.font = '24px Arial';
-                gameCtx.textAlign = 'center';
-                gameCtx.textBaseline = 'middle';
-                gameCtx.fillStyle = '#fff';
-                gameCtx.fillText(powerUp.emoji, x + boxSize / 2, y + boxSize / 2 - 6);
+                // Emoji or Image
+                // Check if we have an image for this power-up
+                let powerUpImg;
+                if (powerUp.type === 'maxhp') {
+                    powerUpImg = objectImages['maxhp_special'];
+                } else {
+                    powerUpImg = objectImages[powerUp.emoji];
+                }
+                
+                if (powerUpImg && powerUpImg.complete) {
+                    // Draw image instead of emoji
+                    const imgSize = 28;
+                    gameCtx.drawImage(powerUpImg, x + boxSize / 2 - imgSize / 2, y + boxSize / 2 - imgSize / 2 - 6, imgSize, imgSize);
+                } else {
+                    // Fallback to emoji
+                    gameCtx.font = '24px Arial';
+                    gameCtx.textAlign = 'center';
+                    gameCtx.textBaseline = 'middle';
+                    gameCtx.fillStyle = '#fff';
+                    gameCtx.fillText(powerUp.emoji, x + boxSize / 2, y + boxSize / 2 - 6);
+                }
                 
                 // Timer
                 gameCtx.font = 'bold 12px Montserrat, sans-serif';
