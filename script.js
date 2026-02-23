@@ -3333,7 +3333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gameLives--;
         damageFlash = 1;
-        invulnerableTimer = 2.0; // 2 seconds invulnerability
+        invulnerableTimer = 3.0; // 3 seconds invulnerability (increased from 2.0)
         updateLivesDisplay();
         playSound('damage');
 
